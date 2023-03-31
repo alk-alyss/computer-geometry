@@ -15,9 +15,19 @@ cyan = np.array([0,1,1])
 black = np.array([0,0,0])
 white = np.array([1,1,1])
 
+def polar2cart(radius, theta):
+    x = np.cos(theta)*radius
+    y = np.sin(theta)*radius
+    return x, y
+
+def cart2polar(x, y):
+    r = (x**2 + y**2)**0.5
+    theta = x/r
+    return r, theta
+
 class Circle2D(metaclass = MultipleMeta):
 
-    def __init__(self, center: np.ndarray, radius: float, res: int = 40, color: np.ndarray = np.array([0,0,0])):
+    def __init__(self, center: np.ndarray, radius: float, res: int = 100, color: np.ndarray = np.array([0,0,0])):
 
         self.center = center
         self.radius = radius
@@ -28,13 +38,27 @@ class Circle2D(metaclass = MultipleMeta):
     def __init__(self, v1: np.ndarray, v2: np.ndarray, v3: np.ndarray, res: int = 40, color: np.ndarray = np.array([0,0,0])):
 
         #calculate the circle's center and radius
-        pass
+        A = 2 * np.array([
+            [v2[0]-v1[0], v2[1]-v1[1]],
+            [v3[0]-v2[0], v3[1]-v2[1]]
+        ]) 
+
+
+        b = np.array([
+            np.dot(v2, v2) - np.dot(v1, v1),
+            np.dot(v3, v3) - np.dot(v2, v2),
+        ])
+
+        self.center = np.linalg.solve(A, b)
+        self.radius = np.linalg.norm(v1 - self.center)
+
+        self.res = res
+        self.color = color
 
     #TASK - 1.2
     def contains(self, v: np.ndarray):
 
-        #implement the contains method
-        pass
+        return np.linalg.norm(v - self.center) <= self.radius
 
     @property
     def center3d(self):
@@ -44,8 +68,25 @@ class Circle2D(metaclass = MultipleMeta):
     @property
     def as_o3d_lineset(self):
 
-        #create a circle piece-wise
-        pass
+        theta = np.linspace(0, 2*np.pi, self.res)
+
+        points = np.array([
+            self.radius * np.cos(theta),
+            self.radius * np.sin(theta),
+            np.zeros(self.res)
+        ]).T
+
+        segments = np.array([
+            np.arange(self.res),
+            np.arange(self.res) + 1
+        ]).T
+
+        segments[-1, 1] = 0
+
+        return o3d.geometry.LineSet(
+            o3d.utility.Vector3dVector(points),
+            o3d.utility.Vector2iVector(segments)
+        ).translate(self.center3d).paint_uniform_color(self.color)
 
 class Line2D:
 
@@ -117,16 +158,22 @@ class Triangle2D(metaclass = MultipleMeta):
 
     #TASK - 2.2
     def contains(self, v: np.ndarray):
-        pass
+        t1 = Triangle2D(self.v1, self.v2, v)
+        t2 = Triangle2D(self.v2, self.v3, v)
+        t3 = Triangle2D(self.v3, self.v1, v)
+
+        return t1.area + t2.area + t3.area - self.area < 1e-8
 
     #TASK - 2.3
     def has_vertex(self, v: np.ndarray):
-        pass
+        dist = self.vertices - v
+        dist = np.linalg.norm(dist, axis=1)
+
+        return (dist < 1e-8).any()
 
     #TASK - 2.4
-    def has_common_edge(self, v: np.ndarray):
-
-        pass
+    def has_common_edge(self, t):
+        return sum(map(self.has_vertex, t.vertices)) >= 2
 
     def non_common_vertex(self, t, return_common=False):
 
@@ -150,8 +197,11 @@ class Triangle2D(metaclass = MultipleMeta):
 
     #TASK
     def split(self, v: np.ndarray):
-
-        pass
+        return (
+            Triangle2D(self.v1, self.v2, v, self.color, self.id+"1"),
+            Triangle2D(self.v2, self.v3, v, self.color, self.id+"2"),
+            Triangle2D(self.v3, self.v1, v, self.color, self.id+"3")
+        )
 
     def __repr__(self):
         return f"Triangle object with vertices v1{self.v1} v2{self.v2} v3{self.v3}"
@@ -172,8 +222,7 @@ class Triangle2D(metaclass = MultipleMeta):
     #TASK - 2.1
     @property
     def area(self):
-
-        pass
+        return 0.5 * np.abs(np.cross(self.v2 - self.v1, self.v3 - self.v1))
 
     @property
     def o3d(self):
@@ -252,7 +301,7 @@ if __name__ == "__main__":
 
     #-----------------------CIRCLE--------------------------
 
-    c = Circle2D(v1,v2,v3, 40, black)
+    c = Circle2D(v1,v2,v3, 40, red)
     qpoint = Circle2D(np.array([0.2,0.2]), 0.1, 40)
 
     o3d.visualization.draw_geometries([c.as_o3d_lineset, qpoint.as_o3d_lineset])

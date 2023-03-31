@@ -125,6 +125,7 @@ class AppWindow:
         #C key - show circumcircle
         if event.key == 99:
 
+
             if self.selected_geometry is None:
                 return gui.Widget.EventCallbackResult.IGNORED
             
@@ -133,10 +134,12 @@ class AppWindow:
             mat.shader = "defaultUnlit"
 
             #creating circumcircle
-            #...
+            circle = self.selected_geometry.circumcircle
+            circle.color = U.red
 
             #adding it to the scene
-            #...
+            self._scene.scene.remove_geometry("circumcircle")
+            self._scene.scene.add_geometry("circumcircle", circle.as_o3d_lineset, mat)
 
 
             return gui.Widget.EventCallbackResult.HANDLED
@@ -153,7 +156,11 @@ class AppWindow:
             mat.shader = "defaultUnlit"
 
             #splitting into three triangles
-            #...
+            triangles = self.selected_geometry.split(self.query_point)
+            self.geometries += triangles
+
+            for triangle in triangles:
+                self._scene.scene.add_geometry(triangle.id, triangle.as_o3d_lineset, mat)
 
             #resetting query point and selected geometry
             self.selected_geometry = None
@@ -169,7 +176,7 @@ class AppWindow:
                 return gui.Widget.EventCallbackResult.IGNORED
 
             #if violations already exist, empty the list and perform as normal
-            if self.violations:
+            if len(self.violations) > 0:
                 return gui.Widget.EventCallbackResult.IGNORED
 
             #unlit material
@@ -178,20 +185,22 @@ class AppWindow:
 
             #searching list for neighboring triangles
             neighbors = []
-            #...
+            for geometry in self.geometries:
+                if self.selected_geometry.has_common_edge(geometry):
+                    neighbors.append(geometry)
 
             #grab circumcircle
-            #...
+            circle = self.selected_geometry.circumcircle
 
             #iterate neighbors
             for n in neighbors:
-
-                pass
                 #find non-common vertex
-                #...
+                vertex = self.selected_geometry.non_common_vertex(n)
 
                 #if the circumcircle of the current triangle contains it then there is a violation
-                #..
+                if circle.contains(vertex):
+                    self.violations.append(n)
+                    self.violations.append(self.selected_geometry)
 
             return gui.Widget.EventCallbackResult.HANDLED
         
@@ -207,20 +216,23 @@ class AppWindow:
             assert len(self.violations) == 2
 
             #removing violating triangles from the scene 
-            #...
+            self._scene.scene.remove_geometry(self.violations[0].id)
+            self._scene.scene.remove_geometry(self.violations[1].id)
 
             #flipping the edge, thereby creating 2 new triangles
-            #...
+            t1, t2 = U.flip_edge(self.violations[0], self.violations[1])
 
             #adding the new triangles to the list
-            #...
+            self.geometries.append(t1)
+            self.geometries.append(t2)
 
             #unlit material
             mat = rendering.MaterialRecord()
             mat.shader = "defaultUnlit"
 
             #adding the new triangles to the scene
-            #...
+            self._scene.scene.add_geometry(t1.id, t1.as_o3d_lineset, mat)
+            self._scene.scene.add_geometry(t2.id, t2.as_o3d_lineset, mat)
 
             #resetting buffers
             self.selected_geometry = None
