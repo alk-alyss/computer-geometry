@@ -1,0 +1,59 @@
+\documentclass{article}
+
+\usepackage[greek]{babel}
+
+\usepackage[a4paper, margin=1.15in]{geometry}
+
+\usepackage{graphicx}
+
+\usepackage{fontspec}
+\setmainfont{DejaVuSansMono Nerd Font}
+\setsansfont{DejaVuSansMono Nerd Font}
+
+\title{Εργαστήριο 1}
+\author{Αλκίνοος Αλυσσανδράκης 1072752}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Περιγραφή αλγορίθμων}
+
+\subsection{Graham Scan}
+
+\begin{enumerate}
+	\item Ταξινομούμε τα σημεία του pointcloud με βάση τη γωνία τους σε πολικές
+		συντεταγμένες
+	\item Βρίσκουμε το σημείο του pointcloud που έχει το μικρότερο Y
+	\item Προσθέτουμε το σημείο σε μια στοίβα
+	\item Προσθέτουμε το επόμενο σημείο από το pointcloud στη στοίβα
+	\item Επανάληψη για όλα τα σημεία στο pointcloud
+	\item Παίρνουμε το επόμενο σημείο από το pointcloud και βρίσκουμε τη γωνία που σχηματίζεται ανάμεσα σε αυτό και τα δύο σημεία στην κορυφή της στοίβας
+	\item Για όσο η γωνία είναι δεξιόστροφη αφαιρούμε το σημείο που βρίσκεται στην κορυφή της στοίβας
+	\item Προσθέτουμε το σημείο που πήραμε από το pointcloud στη στοίβα
+	\item Τέλος επανάληψης
+	\item Η στοίβα περιέχει τα σημεία του pointcloud που αποτελούν το Convex Hull
+\end{enumerate}
+
+\subsection{Quickhull}
+
+\begin{enumerate}
+	\item Βρίσκουμε τα σημεία Α, Β του pointcloud που έχουν μικρότερο και μεγαλύτερο X αντίστοιχα
+	\item Σχηματίζουμε τα ευθύγραμμα τμήματα ΑΒ και ΒΑ
+	\item Καλούμε τη συνάρτηση F δύο φορές με ορίσματα τα σημεί
+	\item Συνάρτηση F(S, E, pointcloud)
+	\begin{enumerate}
+	\item \label{repeat} Με δεδομένα δύο σημεία S, E βρίσκουμε το σημείο P που βρίσκεται αριστερά από το ευθύγραμμο τμήμα SE και απέχει περισσότερο από αυτό
+	\item Σχεδιάζουμε τα ευθύγραμμα τμήματα SP και PE και βρίσκουμε το σύνολο των σημείων που βρίσκεται αριστερά από αυτά τα ευθύγραμμα τμήματα
+	\item Αν ένα από αυτά τα σύνολα είναι κενά τότε το P ανήκει στο Convex Hull οπότε το αποθηκεύουμε σε μια λίστα
+	\item goto \ref{repeat} για τα
+\end{enumerate}
+
+\subsection{Jarvis Match}
+
+\section{Τμήμα Convex Hull φανερό από ένα σημείο}
+
+\section{Σύγκριση χρόνου εκτέλεσης αλγορίθμων Convex Hull}
+
+\end{document}
