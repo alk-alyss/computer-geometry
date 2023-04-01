@@ -1,6 +1,11 @@
+import time
 import numpy as np
 import open3d as o3d
+from tqdm import tqdm
 import utility as U
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
 
 #TASK 2
 def quickhull(pointcloud):
@@ -166,25 +171,57 @@ def graham_scan(pointcloud):
     return pointcloud[np.array(stack)]
 
 if __name__ == "__main__":
-
-    #load stanford bunny
     m = o3d.io.read_triangle_mesh(o3d.data.BunnyMesh().path)
     vertices = np.asarray(m.vertices)[:,:2]
+    totalPoints = vertices.shape[0]
 
-    #calculate convex hull using scipy
-    # hull = ConvexHull(vertices)
+    samples = list(map(int, np.linspace(1024, totalPoints, 50)))
 
-    # #convert the point cloud to open3d
-    # pointcloud = U.o3d_pointcloud(vertices)
-    # #convert the convex hull to a lineset
-    # hull = U.chull_to_lineset(vertices[hull.vertices])
+    durations = []
 
-    #visualize
-    # o3d.visualization.draw_geometries([pointcloud, hull])
+    for i, algorithm in enumerate([graham_scan, quickhull, jarvis]):
+        match i:
+            case 0:
+                label = "graham scan"
+            case 1:
+                label = "quickhull"
+            case 2:
+                label = "jarvis match"
 
-    chull = U.sort_angle(jarvis(vertices))
-    # chull = U.sort_angle(graham_scan(vertices))
-    ls = U.chull_to_lineset(chull)
-    pts = U.o3d_pointcloud(vertices)
+        print(label)
 
-    o3d.visualization.draw_geometries([pts, ls])
+        duration = []
+
+        for sample in tqdm(samples):
+            #load stanford bunny
+
+            subvertices = U.subsample(vertices, sample)
+
+            #calculate convex hull using scipy
+            # hull = ConvexHull(vertices)
+
+            # #convert the point cloud to open3d
+            # pointcloud = U.o3d_pointcloud(vertices)
+            # #convert the convex hull to a lineset
+            # hull = U.chull_to_lineset(vertices[hull.vertices])
+
+            #visualize
+            # o3d.visualization.draw_geometries([pointcloud, hull])
+
+            start = time.time()
+            chull = U.sort_angle(algorithm(subvertices))
+            duration.append(time.time() - start)
+
+            # ls = U.chull_to_lineset(chull)
+            # pts = U.o3d_pointcloud(vertices)
+
+            # o3d.visualization.draw_geometries([pts, ls])
+
+        durations.append(duration)
+
+        plt.plot(samples, duration, label=label)
+
+    plt.xlabel("Number of points")
+    plt.ylabel("Seconds")
+    plt.legend()
+    plt.show()

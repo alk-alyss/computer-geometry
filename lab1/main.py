@@ -63,8 +63,8 @@ class AppWindow:
 
         #Load initial geometry
         m = o3d.io.read_triangle_mesh(o3d.data.BunnyMesh().path)
-        # self.vertices = U.unit_sphere_normalization(U.recenter(U.subsample(np.asarray(m.vertices)[:,:2], 4098)))
-        self.vertices = U.unit_sphere_normalization(U.recenter(np.asarray(m.vertices)[:,:2]))
+        self.vertices = U.unit_sphere_normalization(U.recenter(U.subsample(np.asarray(m.vertices)[:,:2], 4098)))
+        # self.vertices = U.unit_sphere_normalization(U.recenter(np.asarray(m.vertices)[:,:2]))
 
         # m = o3d.geometry.TriangleMesh.create_sphere(resolution=30)
         # self.vertices = U.recenter(U.subsample(np.asarray(m.vertices)[:,:2], 2048))
@@ -126,9 +126,9 @@ class AppWindow:
     #TASK 3: Call jarvis method and watch it happen
     def _run_convex_hull_animation(self):
 
-        # self.qhull_it = graham_scan(self.vertices)
+        self.qhull_it = graham_scan(self.vertices)
         # self.qhull_it = quickhull(self.vertices)
-        self.qhull_it = jarvis(self.vertices)
+        # self.qhull_it = jarvis(self.vertices)
         dt = 0.02
         prev_t = time.time()
 
@@ -277,7 +277,7 @@ class AppWindow:
 
             if left.shape[0] == 0 or right.shape[0] == 0:
                 visible_points.append(point)
-        
+
         return visible_points
 
 
