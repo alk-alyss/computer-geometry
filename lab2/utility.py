@@ -15,77 +15,70 @@ cyan = np.array([0,1,1])
 black = np.array([0,0,0])
 white = np.array([1,1,1])
 
-def polar2cart(radius, theta):
-    x = np.cos(theta)*radius
-    y = np.sin(theta)*radius
-    return x, y
-
-def cart2polar(x, y):
-    r = (x**2 + y**2)**0.5
-    theta = x/r
-    return r, theta
-
 class Circle2D(metaclass = MultipleMeta):
 
-    def __init__(self, center: np.ndarray, radius: float, res: int = 100, color: np.ndarray = np.array([0,0,0])):
+    def __init__(self, center: np.ndarray, radius: float, res: int = 40, color: np.ndarray = np.array([0,0,0])):
 
         self.center = center
         self.radius = radius
         self.res = res
         self.color = color
 
-    #TASK - 1.1
     def __init__(self, v1: np.ndarray, v2: np.ndarray, v3: np.ndarray, res: int = 40, color: np.ndarray = np.array([0,0,0])):
 
-        #calculate the circle's center and radius
-        A = 2 * np.array([
-            [v2[0]-v1[0], v2[1]-v1[1]],
-            [v3[0]-v2[0], v3[1]-v2[1]]
-        ]) 
+        A = np.array([[v2[0] - v1[0], v2[1] - v1[1]],
+                      [v3[0] - v2[0], v3[1] - v2[1]]])
 
-
-        b = np.array([
-            np.dot(v2, v2) - np.dot(v1, v1),
-            np.dot(v3, v3) - np.dot(v2, v2),
-        ])
+        b = 0.5 * np.array([np.dot(v2, v2) - np.dot(v1, v1), np.dot(v3, v3) - np.dot(v2, v2)])
 
         self.center = np.linalg.solve(A, b)
-        self.radius = np.linalg.norm(v1 - self.center)
-
+        self.radius = np.sqrt(np.dot(v1 - self.center, v1 - self.center))
         self.res = res
         self.color = color
 
-    #TASK - 1.2
     def contains(self, v: np.ndarray):
 
-        return np.linalg.norm(v - self.center) <= self.radius
+        d = v-self.center
+        return np.dot(d, d) < self.radius * self.radius
 
     @property
     def center3d(self):
         return np.array([self.center[0], self.center[1], 0.5])
 
-    #TASK - 1.3
     @property
     def as_o3d_lineset(self):
 
-        theta = np.linspace(0, 2*np.pi, self.res)
-
+        samples = np.linspace(0, 2*np.pi, self.res)
         points = np.array([
-            self.radius * np.cos(theta),
-            self.radius * np.sin(theta),
-            np.zeros(self.res)
+            self.radius * np.cos(samples),
+            self.radius * np.sin(samples),
+            np.zeros(self.res),
         ]).T
 
-        segments = np.array([
-            np.arange(self.res),
-            np.arange(self.res) + 1
+        pairs = np.array([np.arange(self.res), np.arange(self.res)+1]).T
+        pairs[-1,0] = 0
+        pairs[-1,1] = self.res-1
+
+        return o3d.geometry.LineSet(o3d.utility.Vector3dVector(points), o3d.utility.Vector2iVector(pairs)).translate(self.center3d)
+
+    @property
+    def as_o3d_mesh(self):
+        
+        samples = np.linspace(0, 2*np.pi, self.res)
+        points = np.array([
+            self.radius * np.cos(samples),
+            self.radius * np.sin(samples),
+            np.zeros(self.res),
         ]).T
 
-        segments[-1, 1] = 0
+        c = np.array([[0, 0, 0.5]])
+        points = np.concatenate((c, points))
+        triangles = np.stack((np.arange(self.res-1)+1, np.zeros(self.res-1), np.arange(self.res-1)+2)).T
+        triangles = np.concatenate((triangles, np.flip(triangles, -1)), 0)
 
-        return o3d.geometry.LineSet(
+        return o3d.geometry.TriangleMesh(
             o3d.utility.Vector3dVector(points),
-            o3d.utility.Vector2iVector(segments)
+            o3d.utility.Vector3iVector(triangles)
         ).translate(self.center3d).paint_uniform_color(self.color)
 
 class Line2D:
@@ -124,7 +117,7 @@ class Line2D:
             o3d.utility.Vector3dVector(vertices),
             o3d.utility.Vector2iVector(np.array([[0,1]]))
         )
-
+    
 class Triangle2D(metaclass = MultipleMeta):
 
     def __init__(self, v1: np.ndarray, v2: np.ndarray, v3: np.ndarray, 
@@ -156,24 +149,46 @@ class Triangle2D(metaclass = MultipleMeta):
     def set_id(self, id: str):
         self.id = id
 
-    #TASK - 2.2
     def contains(self, v: np.ndarray):
-        t1 = Triangle2D(self.v1, self.v2, v)
-        t2 = Triangle2D(self.v2, self.v3, v)
-        t3 = Triangle2D(self.v3, self.v1, v)
 
-        return t1.area + t2.area + t3.area - self.area < 1e-8
+        a12 = Triangle2D(self.v1, self.v2, v).area
+        a23 = Triangle2D(self.v2, self.v3, v).area
+        a31 = Triangle2D(self.v3, self.v1, v).area
 
-    #TASK - 2.3
+        if a12 + a23 + a31 - self.area < 1.e-8:
+            return True
+        
+        return False
+
     def has_vertex(self, v: np.ndarray):
-        dist = self.vertices - v
-        dist = np.linalg.norm(dist, axis=1)
 
-        return (dist < 1e-8).any()
+        if len(v.shape) == 2:
 
-    #TASK - 2.4
-    def has_common_edge(self, t):
-        return sum(map(self.has_vertex, t.vertices)) >= 2
+            target_vertices = self.vertices.reshape(-1, 1, 2)
+            query_vertices = v.reshape(1, -1, 2)
+
+            dist = (target_vertices - query_vertices)
+            dist = (dist * dist).sum(-1).reshape(-1) < 1e-8
+
+            return dist.any()
+
+        elif len(v.shape) == 1:
+
+            dist = self.vertices - v
+            dist = (dist * dist).sum(-1).reshape(-1) < 1e-8
+
+            return dist.any()
+
+    def has_common_edge(self, tri):
+
+        target_vertices = self.vertices.reshape(-1, 1, 2)
+        query_vertices = tri.vertices.reshape(1, -1, 2)
+
+        dist = (target_vertices - query_vertices)
+        dist = (dist * dist).sum(-1).reshape(-1) < 1e-8
+
+        #must have two common vertices
+        return dist.sum() == 2
 
     def non_common_vertex(self, t, return_common=False):
 
@@ -195,13 +210,11 @@ class Triangle2D(metaclass = MultipleMeta):
             else:
                 return self.v3
 
-    #TASK
     def split(self, v: np.ndarray):
-        return (
-            Triangle2D(self.v1, self.v2, v, self.color, self.id+"1"),
-            Triangle2D(self.v2, self.v3, v, self.color, self.id+"2"),
-            Triangle2D(self.v3, self.v1, v, self.color, self.id+"3")
-        )
+
+        return [Triangle2D(self.v1, self.v2, v, self.color, self.id + "1"),
+                Triangle2D(self.v2, self.v3, v, self.color, self.id + "2"),
+                Triangle2D(self.v3, self.v1, v, self.color, self.id + "3")]
 
     def __repr__(self):
         return f"Triangle object with vertices v1{self.v1} v2{self.v2} v3{self.v3}"
@@ -219,10 +232,10 @@ class Triangle2D(metaclass = MultipleMeta):
     def circumcircle(self):
         return Circle2D(self.v1, self.v2, self.v3)
 
-    #TASK - 2.1
     @property
     def area(self):
-        return 0.5 * np.abs(np.cross(self.v2 - self.v1, self.v3 - self.v1))
+
+        return abs((self.v2[0] - self.v1[0])*(self.v3[1] - self.v1[1]) - (self.v3[0] - self.v1[0])*(self.v2[1] - self.v1[1])) / 2.0
 
     @property
     def o3d(self):
@@ -268,6 +281,64 @@ class Triangle2D(metaclass = MultipleMeta):
             o3d.utility.Vector3iVector(np.array([[0, 1, 2], [0, 2, 1]]))
         ).paint_uniform_color(self.color)
 
+class Triangle3D(metaclass = MultipleMeta):
+
+    def __init__(self, v1: np.ndarray, v2: np.ndarray, v3: np.ndarray, color: np.ndarray = np.array([0,0,0])):
+
+        assert dims(v1) == dims(v2) == dims(v3) == 1, "Vertices must be one-dimensional arrays"
+        assert di(v1, 0) == di(v2, 0) == di(v3, 0) == 3, "Vertices must have a shape of (3,)"
+
+        self.v1 = v1
+        self.v2 = v2
+        self.v3 = v3
+
+        self.color = color
+    
+    def __init__(self, verts: np.ndarray, color: np.ndarray = np.array([0,0,0])):
+
+        assert dims(verts) == 2, "Vertex array must be two-dimensional"
+        assert di(verts, 0) == di(verts, 1) == 3, "Vertex array must have a shape of (3, 3)"
+
+        self.v1 = verts[0]
+        self.v2 = verts[1]
+        self.v3 = verts[2]
+
+        self.color = color
+
+    def contains(self, v):
+        pass
+
+    def set_color(self, color: np.ndarray):
+        self.color = color   
+
+    @property
+    def area(self):
+        return 0.5 * np.linalg.norm(np.cross(self.v2 - self.v1, self.v3 - self.v1))
+
+    @property
+    def as_o3d_lineset(self):
+
+        return o3d.geometry.LineSet(
+            o3d.utility.Vector3dVector(np.array([self.v1, self.v2, self.v3])),
+            o3d.utility.Vector2iVector(np.array([[0, 1], [1, 2], [2, 0]]))
+        ).paint_uniform_color(self.color)
+
+    @property
+    def as_o3d_mesh(self):
+
+        return o3d.geometry.TriangleMesh(
+            o3d.utility.Vector3dVector(np.array([self.v1, self.v2, self.v3])),
+            o3d.utility.Vector3iVector(np.array([[0, 1, 2]]))
+        ).paint_uniform_color(self.color)
+    
+    @property
+    def as_o3d_mesh_fb(self):
+
+        return o3d.geometry.TriangleMesh(
+            o3d.utility.Vector3dVector(np.array([self.v1, self.v2, self.v3])),
+            o3d.utility.Vector3iVector(np.array([[0, 1, 2], [0, 2, 1]]))
+        ).paint_uniform_color(self.color)
+
 
 def flip_edge(t1: Triangle2D, t2: Triangle2D):
 
@@ -301,7 +372,7 @@ if __name__ == "__main__":
 
     #-----------------------CIRCLE--------------------------
 
-    c = Circle2D(v1,v2,v3, 40, red)
+    c = Circle2D(v1,v2,v3, 40, black)
     qpoint = Circle2D(np.array([0.2,0.2]), 0.1, 40)
 
     o3d.visualization.draw_geometries([c.as_o3d_lineset, qpoint.as_o3d_lineset])

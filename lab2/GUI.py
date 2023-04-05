@@ -121,10 +121,8 @@ class AppWindow:
 
         print(event.key)
 
-        #ΤΑSK - 3.2
-        #C key - show circumcircle
+        #C key
         if event.key == 99:
-
 
             if self.selected_geometry is None:
                 return gui.Widget.EventCallbackResult.IGNORED
@@ -134,18 +132,14 @@ class AppWindow:
             mat.shader = "defaultUnlit"
 
             #creating circumcircle
-            circle = self.selected_geometry.circumcircle
-            circle.color = U.red
+            circumcircle = self.selected_geometry.circumcircle
 
             #adding it to the scene
-            self._scene.scene.remove_geometry("circumcircle")
-            self._scene.scene.add_geometry("circumcircle", circle.as_o3d_lineset, mat)
-
+            self._scene.scene.add_geometry("circumcircle", circumcircle.as_o3d_lineset.paint_uniform_color(np.array([1,0,0])), mat)
 
             return gui.Widget.EventCallbackResult.HANDLED
 
-        #ΤΑSK - 3.1
-        #S key - split triangle into 3
+        #S key
         elif event.key == 115:
 
             if self.selected_geometry is None or self.query_point is None:
@@ -156,11 +150,12 @@ class AppWindow:
             mat.shader = "defaultUnlit"
 
             #splitting into three triangles
-            triangles = self.selected_geometry.split(self.query_point)
-            self.geometries += triangles
+            self.geometries = self.geometries + self.selected_geometry.split(self.query_point)
+            self._scene.scene.add_geometry(self.geometries[-1].id, self.geometries[-1].as_o3d_lineset, mat)
+            self._scene.scene.add_geometry(self.geometries[-2].id, self.geometries[-2].as_o3d_lineset, mat)
+            self._scene.scene.add_geometry(self.geometries[-3].id, self.geometries[-3].as_o3d_lineset, mat)
 
-            for triangle in triangles:
-                self._scene.scene.add_geometry(triangle.id, triangle.as_o3d_lineset, mat)
+            print(f"geometries: {len(self.geometries)}")
 
             #resetting query point and selected geometry
             self.selected_geometry = None
@@ -168,15 +163,14 @@ class AppWindow:
 
             return gui.Widget.EventCallbackResult.HANDLED
         
-        #ΤΑSK - 3.3
-        #V key - show violations
+        #V key
         elif event.key == 118:
 
             if self.selected_geometry is None:
                 return gui.Widget.EventCallbackResult.IGNORED
 
-            #if violations already exist, empty the list and perform as normal
-            if len(self.violations) > 0:
+            #if violations already exist
+            if self.violations:
                 return gui.Widget.EventCallbackResult.IGNORED
 
             #unlit material
@@ -185,26 +179,34 @@ class AppWindow:
 
             #searching list for neighboring triangles
             neighbors = []
-            for geometry in self.geometries:
-                if self.selected_geometry.has_common_edge(geometry):
-                    neighbors.append(geometry)
+            for tri in self.geometries:
+                if tri.has_common_edge(self.selected_geometry):
+                    neighbors.append(tri)
 
             #grab circumcircle
-            circle = self.selected_geometry.circumcircle
+            circumcircle = self.selected_geometry.circumcircle
 
             #iterate neighbors
             for n in neighbors:
+
                 #find non-common vertex
-                vertex = self.selected_geometry.non_common_vertex(n)
+                ncv = n.non_common_vertex(self.selected_geometry)
 
                 #if the circumcircle of the current triangle contains it then there is a violation
-                if circle.contains(vertex):
-                    self.violations.append(n)
+                if circumcircle.contains(ncv):
+                    self._scene.scene.add_geometry("violation",
+                        create_sphere(ncv[0], ncv[1], radius = 0.01).paint_uniform_color(U.red),
+                        mat
+                    )
+
                     self.violations.append(self.selected_geometry)
+                    self.violations.append(self._find_triangle_by_id(n.id))
+
+            print(len(self.violations))
 
             return gui.Widget.EventCallbackResult.HANDLED
         
-        #F key - fix violations
+        #F key
         elif event.key == 102:
             
             if self.selected_geometry is None:
@@ -230,22 +232,31 @@ class AppWindow:
             mat = rendering.MaterialRecord()
             mat.shader = "defaultUnlit"
 
-            #adding the new triangles to the scene
+            #adding the new triangles
             self._scene.scene.add_geometry(t1.id, t1.as_o3d_lineset, mat)
             self._scene.scene.add_geometry(t2.id, t2.as_o3d_lineset, mat)
 
-            #resetting buffers
             self.selected_geometry = None
             self.violations = []
             self.query_point = None
 
-            #cleaning and redrawing the scene to fix visual bug!!!!
+            #cleaning and redrawing the scene to fix visual bug
             self._scene.scene.clear_geometry()
             self._redraw_scene()
 
             return gui.Widget.EventCallbackResult.HANDLED
 
-        #P key - show selected triangle's points
+        #T key
+        elif event.key == 116 and event.type == KeyEvent.Type.UP:
+            # #popping the last element of the array
+            # t = self.geometries.pop()
+
+            # #removing it from the scene
+            # self._scene.scene.remove_geometry(t.id)
+
+            return gui.Widget.EventCallbackResult.HANDLED
+
+        #P key
         elif event.key == 112:
 
             if self.selected_geometry is None:
@@ -264,15 +275,11 @@ class AppWindow:
             self._scene.scene.add_geometry("v3", v3, mat)
 
             return gui.Widget.EventCallbackResult.HANDLED
-    
-        #T key - placeholder
-        elif event.key == 116 and event.type == KeyEvent.Type.UP:
-
-            return gui.Widget.EventCallbackResult.HANDLED
 
         #R key
         elif event.key == 114:
 
+            
             return gui.Widget.EventCallbackResult.HANDLED
         
         else:
@@ -338,9 +345,8 @@ class AppWindow:
                 self.query_point = query_point
                 target_tri = self._which_triangle(query_point)  
 
-                #if no triangle was hit, then do nothing
+                #if no triangle was hit, then the clicked location is outside of the main triangle
                 if target_tri is None:
-
                     return gui.Widget.EventCallbackResult.CONSUMED  
                 
                 print("Target triangle: ", target_tri.id)
@@ -348,7 +354,7 @@ class AppWindow:
                 #highlighting the selected triangle
                 self.selected_geometry = target_tri
                 self._scene.scene.add_geometry("selected", 
-                                               self.selected_geometry.as_o3d_lineset.paint_uniform_color(U.yellow), 
+                                               self.selected_geometry.as_o3d_lineset.paint_uniform_color(np.array([1,1,0])), 
                                                mat)
 
             return gui.Widget.EventCallbackResult.CONSUMED
