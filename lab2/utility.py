@@ -220,6 +220,10 @@ class Triangle2D(metaclass = MultipleMeta):
         return f"Triangle object with vertices v1{self.v1} v2{self.v2} v3{self.v3}"
 
     @property
+    def barycenter(self):
+        return self.vertices.mean(0)
+
+    @property
     def vertices(self):
 
         return np.vstack((

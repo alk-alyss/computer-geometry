@@ -68,6 +68,8 @@ class AppWindow:
         self.violations = []
         #outside triangles
         self.out_counter = 1
+        #dual graph
+        self.dual = []
 
     def _on_layout(self, layout_context):
         
@@ -78,13 +80,13 @@ class AppWindow:
 
         for i, tri in enumerate(self.geometries):
             if tri.contains(point):
-                return self.geometries.pop(i)
+                return tri
         
     def _find_triangle_by_id(self, id):
 
         for i, tri in enumerate(self.geometries):
             if tri.id == id:
-                return self.geometries.pop(i)
+                return tri
 
     def _erase_temporary_geometries(self):
 
@@ -155,7 +157,10 @@ class AppWindow:
             self._scene.scene.add_geometry(self.geometries[-2].id, self.geometries[-2].as_o3d_lineset, mat)
             self._scene.scene.add_geometry(self.geometries[-3].id, self.geometries[-3].as_o3d_lineset, mat)
 
-            print(f"geometries: {len(self.geometries)}")
+            for i, tri in enumerate(self.geometries):
+                if tri.id == self.selected_geometry.id:
+                    self.geometries.pop(i)
+            self._scene.scene.remove_geometry(self.selected_geometry.id)
 
             #resetting query point and selected geometry
             self.selected_geometry = None
@@ -202,8 +207,6 @@ class AppWindow:
                     self.violations.append(self.selected_geometry)
                     self.violations.append(self._find_triangle_by_id(n.id))
 
-            print(len(self.violations))
-
             return gui.Widget.EventCallbackResult.HANDLED
         
         #F key
@@ -248,11 +251,21 @@ class AppWindow:
 
         #T key
         elif event.key == 116 and event.type == KeyEvent.Type.UP:
-            # #popping the last element of the array
-            # t = self.geometries.pop()
 
-            # #removing it from the scene
-            # self._scene.scene.remove_geometry(t.id)
+            #unlit material
+            mat = rendering.MaterialRecord()
+            mat.shader = "defaultUnlit"
+
+            for i, tri in enumerate(self.geometries):
+                barycenter = create_sphere(tri.barycenter[0], tri.barycenter[1], 0.01).paint_uniform_color(U.blue)
+                self._scene.scene.add_geometry(f"barycenter{i}", barycenter, mat)
+
+                for j, other_tri in enumerate(self.geometries):
+                    if j <= i: continue
+
+                    if tri.has_common_edge(other_tri):
+                        self.dual.append(U.Line2D(tri.barycenter, other_tri.barycenter))
+                        self._scene.scene.add_geometry(f"line{i}{j}", self.dual[-1]._o3d, mat)
 
             return gui.Widget.EventCallbackResult.HANDLED
 
@@ -325,8 +338,8 @@ class AppWindow:
             else:
 
                 #re-adding previous selection to the list, since it was unused
-                if self.selected_geometry is not None:
-                    self.geometries.append(self.selected_geometry)
+                # if self.selected_geometry is not None:
+                #     self.geometries.append(self.selected_geometry)
 
                 #initializing sphere
                 xy = window_to_scene_coords(event.x, event.y, self._scene)
