@@ -59,6 +59,7 @@ class AppWindow:
 
         self.triangles = []
         self.points = []
+        self.overlap = None
 
     def _on_layout(self, layout_context):
         
@@ -83,25 +84,39 @@ class AppWindow:
         self._scene.scene.remove_geometry("v2")
         self._scene.scene.remove_geometry("v3")
 
+    def clear_geometries(self):
+        self._scene.scene.remove_geometry("t0")
+        self._scene.scene.remove_geometry("t1")
+        self.triangles = []
+
+        self._scene.scene.remove_geometry("overlap")
+        self.overlap = None
+
     def _on_key_pressed(self, event):
 
         print(event.key)
 
         #C key
-        if event.key == 99:
+        if event.key == 99 and event.type == KeyEvent.Type.DOWN:
 
-            if self.selected_geometry is None:
-                return gui.Widget.EventCallbackResult.IGNORED
-            
-            #unlit material
-            mat = rendering.MaterialRecord()
-            mat.shader = "defaultUnlit"
+            # Remove overap shape from scene if it exists
+            if self.overlap is not None:
+                self._scene.scene.remove_geometry("overlap")
+                
+                self.overlap = None
+                return gui.Widget.EventCallbackResult.HANDLED
 
-            #creating circumcircle
-            circumcircle = self.selected_geometry.circumcircle
+            if len(self.triangles) < 2:
+                return gui.Widget.EventCallbackResult.HANDLED
 
-            #adding it to the scene
-            self._scene.scene.add_geometry("circumcircle", circumcircle.as_o3d_lineset.paint_uniform_color(np.array([1,0,0])), mat)
+            # Get overlap shape
+            self.overlap = U.triangle_overlap(self.triangles)
+            if self.overlap == []:
+                return gui.Widget.EventCallbackResult.HANDLED
+
+            # Add shape to scene
+            self._scene.scene.add_geometry("overlap", self.overlap, defaultUnlit)
+
 
             return gui.Widget.EventCallbackResult.HANDLED
 
@@ -123,6 +138,9 @@ class AppWindow:
 
                 #falsify click flag
                 self.first_click = False
+
+            if self.overlap is not None:
+                self.clear_geometries()
 
             xy = window_to_scene_coords(event.x, event.y, self._scene)
             sph = create_sphere(xy[0], xy[1], radius = 0.01)

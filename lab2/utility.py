@@ -2,6 +2,7 @@
 import open3d as o3d
 import numpy as np
 from meta import *
+import utility2 as U2
 
 dims = lambda x: len(x.shape) 
 di = lambda x, i: x.shape[i]
@@ -91,16 +92,57 @@ class Line2D:
 
     def __init__(self, v1, v2):
 
-        assert dims(v1) == 1 and dims(v2) == 1
-        assert di(v1, 0) == 2 and di(v2, 0) == 2 
-
         self.v1 = v1
         self.v2 = v2
     
-    #Checks for intersection between self and another given 'Line2D' object
-    def _interesects(self, l1):
+    # Checks for intersection between self and another given 'Line2D' object
+    # https://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect
+    def intersects(self, l1):
 
-        pass
+        def cross(v1, v2):
+            result = v1[0]*v2[1] - v1[1]*v2[0]
+            return result
+
+        p1 = self.v1
+        vec1 = self.v2 - self.v1
+
+        p2 = l1.v1
+        vec2 = l1.v2 - l1.v1
+        
+        if cross(vec1, vec2) == 0 and cross(p2-p1, vec1) != 0:
+            return None
+
+        if cross(vec1, vec2) == 0 and cross(p2-p1, vec1) == 0:
+            intersections = []
+
+            t0 = (p2-p1).dot(vec1) / vec1.dot(vec1)
+            t1 = t0 + vec2.dot(vec1) / vec1.dot(vec1)
+
+            if 0<=t0<1:
+                intersections.append(p1 + t0*vec1)
+
+            if 0<=t1<1:
+                intersections.append(p1 + t0*vec1)
+
+            if len(intersections) < 2:
+                intersections.append(p1 + vec1)
+
+
+            return intersections
+
+
+        t = cross(p2-p1, vec2) / cross(vec1,vec2)
+        u = cross(p2-p1, vec1) / cross(vec1,vec2)
+
+        if cross(vec1, vec2) != 0 and 0<=t<=1 and 0<=u<=1:
+            intersection = p1 + t*vec1
+            return intersection
+
+
+        return None
+
+    def __repr__(self):
+        return f"{self.v1}, {self.v2}"
 
     @property
     def length(self):
@@ -364,6 +406,55 @@ def vertices_of(l: list, unique=True):
         verts = np.unique(verts, axis=0)
 
     return verts
+
+def triangle_overlap(triangles):
+    t1 = triangles[0]
+    t2 = triangles[1]
+
+    # Get linesegments from t1
+    t1_lines = []
+    for i, vertex in enumerate(t1.vertices):
+        start = t1.vertices[i, :]
+        end = t1.vertices[(i+1)%3, :]
+        line = Line2D(start, end)
+        t1_lines.append(line)
+
+    # Get linesegments from t2
+    t2_lines = []
+    for i, vertex in enumerate(t2.vertices):
+        start = t2.vertices[i, :]
+        end = t2.vertices[(i+1)%3, :]
+        line = Line2D(start, end)
+        t2_lines.append(line)
+
+    # Find intersections between the lines of the two triangles
+    overlap_points = []
+    for line1 in t1_lines:
+        for line2 in t2_lines:
+            intersections = line1.intersects(line2)
+            if type(intersections) is list:
+                overlap_points.extend(intersections)
+            elif intersections is not None:
+                overlap_points.append(intersections)
+
+    # Add any points that are inside the triangles to the overlap_points
+    for vertex in t1.vertices:
+        if t2.contains(vertex):
+            overlap_points.append(vertex)
+    
+    for vertex in t2.vertices:
+        if t1.contains(vertex):
+            overlap_points.append(vertex)
+
+    if overlap_points == []:
+        return overlap_points
+
+    overlap_points = np.array(overlap_points)
+    overlap_points = U2.sort_angle(overlap_points)
+
+    overlap = U2.chull_to_lineset(overlap_points, color=blue)
+
+    return overlap
 
 if __name__ == "__main__":
 
