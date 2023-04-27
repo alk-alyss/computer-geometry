@@ -91,7 +91,7 @@ def find_AABB(mesh):
     
 # Task 3: Calculate the principal component of the mesh
 ############################################
-def find_principal_component(mesh):
+def find_principal_components(mesh):
     vertices = np.asarray(mesh.vertices)
     # TODO
     # Calculate the covariance matrix
@@ -104,17 +104,41 @@ def find_principal_component(mesh):
 
     # sort eigenvectors based on eigenvalues
     sorted_indices = np.argsort(eigenvalues)[::-1]
-    sorted_eigenvectors = eigenvectors[:, sorted_indices]
-    # principal component is the eigenvector corresponding to the largest eigenvalue
-    principal_component = sorted_eigenvectors[0]
+    eigenvalues = eigenvalues[sorted_indices]
+    eigenvectors = eigenvectors[:, sorted_indices]
 
     # creating an LineSet with Open3D to visualize the axis
-    axis = o3d.geometry.LineSet()
-    axis.points = o3d.utility.Vector3dVector([np.array([0.0, 0.0, 0.0]), principal_component])
-    axis.lines = o3d.utility.Vector2iVector([[0, 1]])
-    axis.colors = o3d.utility.Vector3dVector([red])
+    axies = []
+    colors = [red, green, blue]
+    for i, principal_component in enumerate(eigenvectors):
+        cylinder_radius = 0.5
+        cone_radius = cylinder_radius*1.6
+        scaling_factor = eigenvalues[i]
+        print(scaling_factor)
+        cylinder_height = 200 * scaling_factor
 
-    return axis
+        axis = o3d.geometry.TriangleMesh.create_arrow(cylinder_radius=cylinder_radius, cone_radius=cone_radius, cylinder_height=cylinder_height)
+        axis.paint_uniform_color(colors[i])
+        axis.compute_triangle_normals()
+
+        axis.scale(0.05, np.array([0, 0, 0]))
+
+        vec1 = np.array([0, 0, cylinder_height])
+        vec2 = principal_component
+
+        normal = np.cross(vec1, vec2)
+        normal = normal / np.linalg.norm(normal)
+
+        angle = np.arccos(vec1.dot(vec2) / np.linalg.norm(vec1) * np.linalg.norm(vec2))
+
+        rotationVector = normal * angle
+
+        rotation = o3d.geometry.get_rotation_matrix_from_axis_angle(rotationVector)
+        axis.rotate(rotation, center=(0,0,0))
+
+        axies.append(axis)
+
+    return axies
 
     
 
@@ -168,12 +192,109 @@ def fing_mesh_plane_intersection_triangles(vertices, triangles, plane_vec):
     return intersect_idxs
 
 
+def fing_mesh_plane_intersection_triangles_efficient(vertices, triangles, plane_vec):
+
+    # adding an extra dim (homogenous)
+    vertices = np.concatenate(
+        [
+            vertices,
+            np.ones((vertices.shape[0], 1))
+        ],
+        axis=1
+    )
+
+    # calculating the distance of the points to the plane
+    distances = vertices.dot(plane_vec)
+    # see if the distance is positive or negative
+    distances = distances > 0
+
+    # create a boolean array to store the indexes of the intersection 
+    # initially all points are intersection candidates
+    intersect_idxs = np.ones(triangles.shape[0], dtype=bool)
+    above_idxs = np.zeros(triangles.shape[0], dtype=bool)
+    below_idxs = np.zeros(triangles.shape[0], dtype=bool)
+
+    triangles = triangles.reshape(-1)
+
+    distances = distances[triangles]
+    distances = distances.reshape((-1, 3))
+
+    # triangles that all vertices are above the plane
+    intersect_idxs[distances.all(axis=-1)] = 0
+    above_idxs[distances.all(axis=-1)] = 1
+
+    # triangles that all vertices are below the plane
+    distances = np.logical_not(distances)
+    intersect_idxs[distances.all(axis=-1)] = 0
+    below_idxs[distances.all(axis=-1)] = 1
+    
+    return intersect_idxs, above_idxs, below_idxs
+
+
+def fing_mesh_plane_intersection_triangles_loop(vertices, triangles, plane_vec):
+
+    intersect_idxs = np.ones(triangles.shape[0], dtype=bool)
+
+    for i, triangle in enumerate(triangles):
+        triangle_vertices = vertices[triangle]
+
+        triangle_vertices = np.concatenate(
+            [
+                triangle_vertices,
+                np.ones((triangle_vertices.shape[0], 1))
+            ],
+            axis = 1
+        )
+
+        distances = triangle_vertices.dot(plane_vec)
+        distances = distances > 0
+
+        if distances.all():
+            intersect_idxs[i] = 0
+
+        distances = np.logical_not(distances)
+
+        if distances.all():
+            intersect_idxs[i] = 0
+
+    return intersect_idxs
+
+
+def fing_mesh_plane_intersection_triangles_loop_efficient(vertices, triangles, plane_vec):
+
+    vertices = np.concatenate(
+        [
+            vertices,
+            np.ones((vertices.shape[0], 1))
+        ],
+        axis=1
+    )
+
+    # calculating the distance of the points to the plane
+    distances = vertices.dot(plane_vec)
+    # see if the distance is positive or negative
+    distances = distances > 0
+
+    intersect_idxs = np.ones(triangles.shape[0], dtype=bool)
+
+    for i, triangle in enumerate(triangles):
+        triangle_distances = distances[triangle]
+
+        if triangle_distances.all():
+            intersect_idxs[i] = 0
+
+        triangle_distances = np.logical_not(triangle_distances)
+
+        if triangle_distances.all():
+            intersect_idxs[i] = 0
+
+    return intersect_idxs
 
 
 def get_xz_plane():
     # Create a plane model
     plane = o3d.geometry.TriangleMesh.create_box(width=1.0, height= 0.0001, depth=1.0)
-    plane.compute_vertex_normals()
+    plane.compute_triangle_normals()
     plane_center = get_center(plane)
     plane = translate(plane, -plane_center)
     plane.paint_uniform_color(red)

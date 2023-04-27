@@ -6,11 +6,14 @@ from open3d.visualization.gui import MouseEvent, KeyEvent
 from open3d.visualization.rendering import Camera
 import numpy as np
 import utility as U
+import time
 
 
 defaultUnlit = rendering.MaterialRecord()
 defaultUnlit.shader = "defaultLit"
 
+duration = 0
+times = 0
 
 class AppWindow:
 
@@ -83,6 +86,11 @@ class AppWindow:
         self.geometries.pop('intersection')
         self.remove_geometry('intersection')
 
+        self.geometries.pop('above')
+        self.remove_geometry('above')
+        self.geometries.pop('below')
+        self.remove_geometry('below')
+
         return plane
 
     def _on_key_pressed(self, event):
@@ -154,12 +162,15 @@ class AppWindow:
     # Task 3: Calculate the principal component of the mesh
     def principal_component(self):
         if not self.pr_comp_on:
-            pr = U.find_principal_component(self.geometries["mesh"])
-            self.add_geometry(pr, "principal_component")
+            principal_components = U.find_principal_components(self.geometries["mesh"])
+
+            for i, pr in enumerate(principal_components):
+                self.add_geometry(pr, f"principal_component{i}")
 
         else:
-            self.geometries.pop("principal_component")
-            self.remove_geometry("principal_component")
+            for i in range(3):
+                self.geometries.pop(f"principal_component{i}")
+                self.remove_geometry(f"principal_component{i}")
 
         self.pr_comp_on = not self.pr_comp_on
 
@@ -213,6 +224,8 @@ class AppWindow:
 
     # Task 4.2: Calculate the mesh/plane intersection
     def mesh_plane_intersection(self):
+        global duration, times
+
         mesh = self.geometries['mesh']
         plane_vec = self.plane_vec
 
@@ -221,18 +234,47 @@ class AppWindow:
         triangles = np.asarray(mesh.triangles)
 
         # get the indices of the triangles that intersect with the plane
-        intersect_idxs = U.fing_mesh_plane_intersection_triangles(vertices, triangles, plane_vec)
+        start = time.time()
+        # intersect_idxs = U.fing_mesh_plane_intersection_triangles(vertices, triangles, plane_vec)
+        intersect_idxs, above_idxs, below_idxs = U.fing_mesh_plane_intersection_triangles_efficient(vertices, triangles, plane_vec)
+        # intersect_idxs = U.fing_mesh_plane_intersection_triangles_loop(vertices, triangles, plane_vec)
+        # intersect_idxs = U.fing_mesh_plane_intersection_triangles_loop_efficient(vertices, triangles, plane_vec)
+        duration += time.time() - start
+        times += 1
 
         intersect_triangles = triangles[intersect_idxs, :]  
+        above_triangles = triangles[above_idxs, :]  
+        below_triangles = triangles[below_idxs, :]  
 
         ## RENDERING ##
         # create a new mesh containing only these triangles
         intersection = o3d.geometry.TriangleMesh()
         intersection.vertices = o3d.utility.Vector3dVector(vertices)
         intersection.triangles = o3d.utility.Vector3iVector(intersect_triangles)
+        intersection.compute_triangle_normals()
         intersection.paint_uniform_color(U.blue)
 
+        above = o3d.geometry.TriangleMesh()
+        above.vertices = o3d.utility.Vector3dVector(vertices)
+        above.triangles = o3d.utility.Vector3iVector(above_triangles)
+        above.compute_triangle_normals()
+        above.paint_uniform_color(U.red)
+
+        below = o3d.geometry.TriangleMesh()
+        below.vertices = o3d.utility.Vector3dVector(vertices)
+        below.triangles = o3d.utility.Vector3iVector(below_triangles)
+        below.compute_triangle_normals()
+        below.paint_uniform_color(U.green)
+        
+        translation_vector = np.array((0, 0.5, 0))
+        above.translate(translation_vector)
+        below.translate(-translation_vector)
+
         self.add_geometry(intersection, "intersection")
+        self.add_geometry(above, "above")
+        self.add_geometry(below, "below")
+
+        self.remove_geometry("mesh")
 
 
 
@@ -242,21 +284,30 @@ class AppWindow:
 
 if __name__=="__main__":
 
-    gui.Application.instance.initialize()
+    try:
+        gui.Application.instance.initialize()
 
-    # initialize GUI
-    app = AppWindow(1280, 720)
+        # initialize GUI
+        app = AppWindow(1280, 720)
 
-    # load a mesh for manipulation
-    mesh = o3d.io.read_triangle_mesh("lab3/armadillo_005.ply")
-    mesh.compute_vertex_normals()
+        # load a mesh for manipulation
+        mesh = o3d.io.read_triangle_mesh("lab3/armadillo_005.ply")
+        mesh.compute_vertex_normals()
+        
+
+        # Task 1: Preprocess the mesh before adding it to the GUI
+        mesh_center = U.get_center(mesh)
+        mesh = U.translate(mesh, -mesh_center)
+        mesh = U.unit_sphere_normalization(mesh)
+
+        app.add_geometry(mesh, "mesh")
+
+        gui.Application.instance.run()
     
-
-    # Task 1: Preprocess the mesh before adding it to the GUI
-    mesh_center = U.get_center(mesh)
-    mesh = U.translate(mesh, -mesh_center)
-    mesh = U.unit_sphere_normalization(mesh)
-
-    app.add_geometry(mesh, "mesh")
-
-    gui.Application.instance.run()
+    except KeyboardInterrupt:
+        # print()
+        # if times != 0:
+        #     average_time = duration / times
+        #     with open("times.txt", "a") as f:
+        #         f.write(f"{average_time}\n")
+        raise KeyboardInterrupt
