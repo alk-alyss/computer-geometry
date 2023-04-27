@@ -114,7 +114,6 @@ def find_principal_components(mesh):
         cylinder_radius = 0.5
         cone_radius = cylinder_radius*1.6
         scaling_factor = eigenvalues[i]
-        print(scaling_factor)
         cylinder_height = 200 * scaling_factor
 
         axis = o3d.geometry.TriangleMesh.create_arrow(cylinder_radius=cylinder_radius, cone_radius=cone_radius, cylinder_height=cylinder_height)
@@ -129,7 +128,7 @@ def find_principal_components(mesh):
         normal = np.cross(vec1, vec2)
         normal = normal / np.linalg.norm(normal)
 
-        angle = np.arccos(vec1.dot(vec2) / np.linalg.norm(vec1) * np.linalg.norm(vec2))
+        angle = np.arccos(vec1.dot(vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2)))
 
         rotationVector = normal * angle
 
@@ -165,7 +164,6 @@ def fing_mesh_plane_intersection_triangles(vertices, triangles, plane_vec):
         ],
         axis=1
     )
-    print(unrolled_vertices.shape)
 
     # calculating the distance of the points to the plane
     unrolled_distances = unrolled_vertices.dot(plane_vec)
@@ -176,7 +174,6 @@ def fing_mesh_plane_intersection_triangles(vertices, triangles, plane_vec):
     # reshaping the triangles back to original shape
     triangles = triangles.reshape((-1, 3))
     unrolled_distances = unrolled_distances.reshape((-1, 3))
-    print(unrolled_distances.shape)
 
     # create a boolean array to store the indexes of the intersection 
     # initially all points are intersection candidates
