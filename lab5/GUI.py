@@ -226,7 +226,7 @@ class AppWindow:
         
         #V key - reset geometry and redraw scene
         elif event.key == 118:
-            self._reset_gepometry()
+            self._reset_geometry()
             self._redraw_scene()
             return gui.Widget.EventCallbackResult.HANDLED
         
