@@ -37,16 +37,44 @@ def create_test_mesh():
 #TASK-3
 def adjacency_matrix_dense(triangles, num_vertices=None):
 
-    #A = ....
+    if num_vertices is None:
+        num_vertices = triangles.max()+1
+    
+    adj_matrix = np.zeros((num_vertices, num_vertices), dtype=np.uint16)
 
-    return A
+    for tri in triangles:
+        v1, v2, v3 = tri
+        adj_matrix[v1, v2] = 1
+        adj_matrix[v2, v1] = 1
+        adj_matrix[v2, v3] = 1
+        adj_matrix[v3, v2] = 1
+        adj_matrix[v3, v1] = 1
+        adj_matrix[v1, v3] = 1
+    
+    return adj_matrix
 
 #TASK-3 (Lab)
 def adjacency_matrix_sparse(triangles, num_vertices = None):
 
-    # A = ...
+    if num_vertices is None:
+        num_vertices = triangles.max()+1
+    
+    adj_matrix = lil_matrix((num_vertices, num_vertices), dtype=np.uint16)
 
-    return A
+    for tri in triangles:
+        v1, v2, v3 = tri
+        adj_matrix[v1, v2] = 1
+        adj_matrix[v2, v1] = 1
+        adj_matrix[v2, v3] = 1
+        adj_matrix[v3, v2] = 1
+        adj_matrix[v3, v1] = 1
+        adj_matrix[v1, v3] = 1
+    
+    return adj_matrix.tocsr()
+
+def adjacency_matrix(triangles, num_vertices=None):
+    return adjacency_matrix_sparse(triangles, num_vertices)
+    # return adjacency_matrix_dense(triangles, num_vertices)
 
 #TASK-3 (Lab) 
 def degree_matrix(adj, exponent=1):
@@ -66,24 +94,142 @@ def degree_matrix(adj, exponent=1):
 #TASK-2
 def delta_coordinates_single(idx, vertices, triangles, k=1):
 
-    pass
+    vi = vertices[idx]
+
+    neighbors = k_ring_adjacency(idx, triangles, k)
+    delta = vi - vertices[neighbors,:].mean(0)
+
+    return delta
 
 #TASK-4
 def delta_coordinates(vertices, triangles, use_laplacian=True):
 
-    pass
+    if use_laplacian:
+        L = random_walk_laplacian(triangles)
+        delta = L @ vertices
+    else:
+        delta = np.zeros_like(vertices)
+        for i, vi in enumerate(vertices):
+            neighbors = k_ring_adjacency(i, triangles, 1)
+            delta[i] = vi - vertices[neighbors, :].mean(0)
+
+    return delta
 
 #TASK-1
-def k_ring_recursive(idx, triangles, k = 1):
+def k_ring(idx, adj_list, k = 1):
+    open_list = []
+    depths = []
+    closed_list = []
 
-    pass
-    #...
+    open_list.append(idx)
+    depths.append(0)
+
+    while len(open_list) > 0:
+        current_vertex = open_list.pop(0)
+        depth = depths.pop(0)
+
+        closed_list.append(current_vertex)
+
+        if depth + 1 > k:
+            continue
+
+        for vertex in adj_list[current_vertex]:
+            if vertex not in open_list and vertex not in closed_list:
+                open_list.append(vertex)
+                depths.append(depth+1)
+
+    closed_list.pop(0)
+    return closed_list
+
+def k_ring_recursive(idx, triangles, k=1):
+    
+    if not k:
+        return np.array([])
+    
+    if isinstance(idx, int):
+        idx = np.array([idx], dtype=np.uint16)
+
+    new_ids = np.array([], dtype=np.uint16)
+
+    for id in idx:
+        for t in triangles:
+            if id in t:
+                new_ids = np.hstack((new_ids, t[t-id != 0]))
+
+    new_ids = np.unique(new_ids)
+
+    return np.unique(np.hstack((new_ids, k_ring_recursive(new_ids, triangles, k-1)))).astype(np.uint32)
 
 #TASK-3
 def k_ring_adjacency(idx, triangles, k=1, num_vertices=None):
 
-    pass
-    #...
+    adj_matrix = adjacency_matrix(triangles, num_vertices)
+
+    adj_matrix = adj_matrix ** k
+
+    neighbors = adj_matrix[idx, :].toarray()
+
+    return neighbors.nonzero()[1]
+
+def get_adjacency_list_and_degree(id, triangles):
+    neighbours = set()
+
+    for row in triangles:
+        if id in row:
+            for vertex in row:
+                neighbours.add(vertex)
+
+    neighbours.remove(id)
+
+    return np.array(list(neighbours), dtype=int), len(neighbours)
+
+def get_adjacency_lists_and_degrees(triangles, num_vertices):
+    neighbours = [set() for i in range(num_vertices)]
+
+    for triangle in triangles:
+        neighbours[triangle[0]].add(triangle[1])
+        neighbours[triangle[0]].add(triangle[2])
+
+        neighbours[triangle[1]].add(triangle[0])
+        neighbours[triangle[1]].add(triangle[2])
+
+        neighbours[triangle[2]].add(triangle[0])
+        neighbours[triangle[2]].add(triangle[1])
+    
+    degrees = []
+    for i,neighbour in enumerate(neighbours):
+        neighbours[i] = list(neighbour)
+        degrees.append(len(neighbour))
+    
+    return neighbours, degrees
+
+def get_adjacency_degree_and_laplacian_matrix(triangles, exponent, num_vertices):
+    adj_matrix = lil_matrix((num_vertices, num_vertices), dtype=np.uint16)
+    degrees = np.zeros(num_vertices, dtype=np.uint8)
+
+    for triangle in triangles:
+        for i in range(3):
+            j = triangle[i]
+            k = triangle[(i+1)%3]
+
+            if adj_matrix[j, k] == 0:
+                adj_matrix[j, k] = 1
+                adj_matrix[k, j] = 1
+
+                degrees[k] += 1
+                degrees[j] += 1
+
+    adj_matrix = adj_matrix.tocsr()
+
+    if exponent == 1:
+        degree_matrix = diags(degrees, format="csr", dtype=np.int8)
+        laplacian_matrix = degree_matrix - adj_matrix
+    else:
+        degree_matrix = diags(1/degrees, format="csr")
+        laplacian_matrix = eye(num_vertices, num_vertices, 0) - degree_matrix @ adj_matrix
+
+    return adj_matrix, degree_matrix, laplacian_matrix.astype(np.float64)
+
 
 def sample_colormap(scalars, name="inferno"):
 
@@ -101,14 +247,29 @@ def sample_colormap(scalars, name="inferno"):
 #TASK-5
 def graph_laplacian(triangles):
 
-    pass
-    #...
+    num_vertices = triangles.max()+1
+
+    A = adjacency_matrix(triangles, num_vertices=num_vertices)
+    D = degree_matrix(A, exponent=1)
+
+    L = D - A
+
+    return L
 
 #TASK-4
 def random_walk_laplacian(triangles, subtract=True):
 
-    pass
-    #...
+    num_vertices = triangles.max()+1
+
+    A = adjacency_matrix(triangles, num_vertices=num_vertices)
+    Dinv = degree_matrix(A, exponent=-1)
+
+    if subtract:
+        L = eye(num_vertices, num_vertices, 0) - Dinv @ A
+    else:
+        L = Dinv @ A
+    
+    return L
 
 if __name__ == "__main__":
 
