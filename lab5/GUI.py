@@ -54,6 +54,7 @@ class AppWindow:
         #materials
         self.matlit = rendering.MaterialRecord()
         self.matlit.shader = "defaultLit"
+        self.matlit.point_size = 6
         self.matunlit = rendering.MaterialRecord()
         self.matunlit.shader = "defaultUnlit"
         self.matunlit.point_size = 6
@@ -315,7 +316,7 @@ class AppWindow:
             o3d.utility.Vector3iVector(self.triangles)
         )
 
-        self.wire = o3d.geometry.LineSet.create_from_triangle_mesh(self.geometry)
+        self.wire = o3d.geometry.LineSet.create_from_triangle_mesh(self.geometry).paint_uniform_color([0,0,0])
 
         self.pc = o3d.geometry.PointCloud(self.geometry.vertices).paint_uniform_color([0,0,0])
 
@@ -327,7 +328,7 @@ class AppWindow:
         #if line mode then draw lineset
         if self.which == "line":
             self._scene.scene.add_geometry("__wire__", self.wire, self.matline)
-            self._scene.scene.add_geometry("__points__", self.pc, self.matline)
+            self._scene.scene.add_geometry("__points__", self.pc, self.matunlit)
 
         elif self.which == "mesh":
             self._scene.scene.add_geometry("__model__", self.geometry, self.matlit)
@@ -356,13 +357,16 @@ class AppWindow:
 
         if self.selected_vertex is not None:
             print(f"finding {k}-ring neighbors")
-            neighbors = U.k_ring_adjacency(self.selected_vertex, self.triangles, k)
-            # neighbors = U.k_ring_recursive(self.selected_vertex, self.triangles, k)
+
+            num_vertices = self.vertices.shape[0]
+            # neighbors = U.k_ring_adjacency(self.selected_vertex, self.triangles, k, num_vertices)
+            neighbors = U.k_ring_recursive(self.selected_vertex, self.triangles)
 
             colors = np.zeros_like(self.vertices)
             colors[neighbors, 0] = 1
 
             self.geometry.vertex_colors = o3d.utility.Vector3dVector(colors)
+            self.pc.colors = o3d.utility.Vector3dVector(colors)
 
             self._redraw_scene()
 
