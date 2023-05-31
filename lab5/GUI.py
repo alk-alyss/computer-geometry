@@ -400,10 +400,10 @@ class AppWindow:
         if self.geometry is not None:
             
             #calculating the graph laplacian
-            L = U.graph_laplacian(self.triangles).astype(np.float32).toarray()
+            L = U.graph_laplacian(self.triangles).astype(np.float32)
             
             #performing eigendecomposition
-            vals, vecs = eigh(L)
+            vals, vecs = eigsh(L)
 
             #sorting according to eigenvalue
             sort_idx = np.argsort(vals)
