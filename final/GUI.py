@@ -39,15 +39,16 @@ class AppWindow:
 
         #set mouse and key callbacks
         self._scene.set_on_key(self._on_key_pressed)
-        self._scene.set_on_mouse(self._on_mouse_pressed)
 
         #geometry container for future reference
         self.geometry = None
         self.vertices = None
         self.triangles = None
         self.tree = None
-        self.selected_vertex = None
+
         self.laplacian = None
+
+        self.eigenvalues = None
         self.eigenvectors = None
         self.current_eigenvector = 0
 
@@ -207,7 +208,7 @@ class AppWindow:
         if event.type == KeyEvent.Type.UP:
             return gui.Widget.EventCallbackResult.HANDLED
 
-        print("key pressed: ", event.key)
+        # print("key pressed: ", event.key)
 
         #R key - reset geometry and redraw scene
         if event.key == 114:
@@ -246,17 +247,18 @@ class AppWindow:
         elif event.key == 263 or event.key == 266:
             self.current_eigenvector = self.current_eigenvector -1 if self.current_eigenvector > 0 else 0
             print("current eigenvector: ", self.current_eigenvector)
+            self._show_eigenvector()
             return gui.Widget.EventCallbackResult.HANDLED
 
         #right or up arrow keys - increase eigenvector counter
         elif event.key == 264 or event.key == 265:
-            self.current_eigenvector = self.current_eigenvector +1 if self.current_eigenvector < self.vertices.shape[0]-1 else self.vertices.shape[0]-1
+            self.current_eigenvector = self.current_eigenvector +1 if self.current_eigenvector < self.eigenvectors.shape[0]-1 else self.eigenvectors.shape[0]-1
             print("current eigenvector: ", self.current_eigenvector)
+            self._show_eigenvector()
             return gui.Widget.EventCallbackResult.HANDLED
 
-        #enter key - show eigenvector
+        #enter key - placeholder
         elif event.key == 10:
-            self._show_eigenvector()
             return gui.Widget.EventCallbackResult.HANDLED
 
         else:
@@ -289,11 +291,10 @@ class AppWindow:
 
             #performing eigendecomposition
             vals, vecs = eigh(L)
-            print(vecs.shape)
 
             #sorting according to eigenvalue
-            sort_idx = np.argsort(vals)
-            self.eigenvectors = vecs[:, sort_idx]
+            self.eigenvalues = np.argsort(vals)
+            self.eigenvectors = vecs[:, self.eigenvalues]
 
     def _show_eigenvector(self):
 
