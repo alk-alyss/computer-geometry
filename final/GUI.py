@@ -204,6 +204,9 @@ class AppWindow:
 
     def _on_key_pressed(self, event):
 
+        if event.type == KeyEvent.Type.UP:
+            return gui.Widget.EventCallbackResult.HANDLED
+
         print("key pressed: ", event.key)
 
         #R key - reset geometry and redraw scene
@@ -212,15 +215,31 @@ class AppWindow:
             self._redraw_scene()
             return gui.Widget.EventCallbackResult.HANDLED
 
-        #S key - eigendecomposition and
+        #N key - apply noise to the mesh
+        elif event.key == 110:
+            self._apply_noise()
+            return gui.Widget.EventCallbackResult.HANDLED
+
+        #S key - simplify mesh
         elif event.key == 115:
-            self._show_eigendecomposition()
+            self._simplify_mesh()
+            return gui.Widget.EventCallbackResult.HANDLED
+
+        #C key - find similar coatings
+        elif event.key == 99:
+            self._similar_coatings()
+            return gui.Widget.EventCallbackResult.HANDLED
+
+        #O key - find similar objects
+        elif event.key == 111:
+            self._similar_objects()
             return gui.Widget.EventCallbackResult.HANDLED
 
         #V key - eigenvector visualization mode
         elif event.key == 118:
             self._calc_eigenvectors()
             print("eigenvectors calculated.")
+            self._show_eigenvector()
             return gui.Widget.EventCallbackResult.HANDLED
 
         #left or bottom arrow keys - decrease eigenvector counter
@@ -262,6 +281,46 @@ class AppWindow:
 
         self._scene.scene.add_geometry("__model__", self.geometry, self.matlit)
 
+    def _calc_eigenvectors(self):
+
+        if self.laplacian is not None:
+
+            L = self.laplacian
+
+            #performing eigendecomposition
+            vals, vecs = eigh(L)
+            print(vecs.shape)
+
+            #sorting according to eigenvalue
+            sort_idx = np.argsort(vals)
+            self.eigenvectors = vecs[:, sort_idx]
+
+    def _show_eigenvector(self):
+
+        if self.eigenvectors is not None:
+
+            # colors = np.zeros_like(self.vertices)
+
+            scalars = self.eigenvectors[:,self.current_eigenvector]
+            scalars = (scalars - scalars.min()) / (scalars.max() - scalars.min())
+
+            # colors[:,0] = scalars
+            colors = U.sample_colormap(scalars)
+
+            self.geometry.vertex_colors = o3d.utility.Vector3dVector(colors)
+            self._redraw_scene()
+
+    def _apply_noise(self):
+        pass
+
+    def _simplify_mesh(self):
+        pass
+
+    def _similar_coatings(self):
+        pass
+
+    def _similar_objects(self):
+        pass
 
 def main():
 
