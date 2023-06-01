@@ -73,8 +73,8 @@ def adjacency_matrix_sparse(triangles, num_vertices = None):
     return adj_matrix.tocsr()
 
 def adjacency_matrix(triangles, num_vertices=None):
-    # return adjacency_matrix_sparse(triangles, num_vertices)
-    return adjacency_matrix_dense(triangles, num_vertices)
+    return adjacency_matrix_sparse(triangles, num_vertices).toarray()
+    # return adjacency_matrix_dense(triangles, num_vertices)
 
 #TASK-3 (Lab)
 def degree_matrix(adj, exponent=1):
@@ -86,7 +86,7 @@ def degree_matrix(adj, exponent=1):
         diagonals = adj.sum(axis=0)
         return diags(diagonals, format="csr", dtype=np.int32)
     else:
-        diagonals = adj.sum(axis=0).astype(np.float32)**exponent
+        diagonals = np.float_power(adj.sum(axis=0), exponent)
         return diags(diagonals, format="csr", dtype=np.float32)
 
 #TASK-2
@@ -100,18 +100,22 @@ def delta_coordinates_single(idx, vertices, triangles, k=1):
     return delta
 
 #TASK-4
-def delta_coordinates(vertices, triangles, use_laplacian=True):
+def delta_coordinates(vertices, triangles, laplacian=None, use_laplacian=True):
 
-    if use_laplacian:
-        L = random_walk_laplacian(triangles)
-        delta = L @ vertices
-    else:
-        delta = np.zeros_like(vertices)
-        for i, vi in enumerate(vertices):
-            neighbors = k_ring_adjacency(i, triangles, 1)
-            delta[i] = vi - vertices[neighbors, :].mean(0)
+    if laplacian is not None:
+        return laplacian @ vertices
 
-    return delta
+    if triangles is not None:
+        if use_laplacian:
+            L = random_walk_laplacian(triangles)
+            delta = L @ vertices
+        else:
+            delta = np.zeros_like(vertices)
+            for i, vi in enumerate(vertices):
+                neighbors = k_ring_adjacency(i, triangles, 1)
+                delta[i] = vi - vertices[neighbors, :].mean(0)
+
+        return delta
 
 #TASK-1
 def k_ring(idx, adj_list, k = 1):
@@ -168,66 +172,6 @@ def k_ring_adjacency(idx, triangles, k=1, num_vertices=None):
     neighbors = adj_matrix[idx, :]
 
     return neighbors.nonzero()[1]
-
-def get_adjacency_list_and_degree(id, triangles):
-    neighbours = set()
-
-    for row in triangles:
-        if id in row:
-            for vertex in row:
-                neighbours.add(vertex)
-
-    neighbours.remove(id)
-
-    return np.array(list(neighbours), dtype=int), len(neighbours)
-
-def get_adjacency_lists_and_degrees(triangles, num_vertices):
-    neighbours = [set() for i in range(num_vertices)]
-
-    for triangle in triangles:
-        neighbours[triangle[0]].add(triangle[1])
-        neighbours[triangle[0]].add(triangle[2])
-
-        neighbours[triangle[1]].add(triangle[0])
-        neighbours[triangle[1]].add(triangle[2])
-
-        neighbours[triangle[2]].add(triangle[0])
-        neighbours[triangle[2]].add(triangle[1])
-
-    degrees = []
-    for i,neighbour in enumerate(neighbours):
-        neighbours[i] = list(neighbour)
-        degrees.append(len(neighbour))
-
-    return neighbours, degrees
-
-def get_adjacency_degree_and_laplacian_matrix(triangles, exponent, num_vertices):
-    adj_matrix = lil_matrix((num_vertices, num_vertices), dtype=np.uint16)
-    degrees = np.zeros(num_vertices, dtype=np.uint8)
-
-    for triangle in triangles:
-        for i in range(3):
-            j = triangle[i]
-            k = triangle[(i+1)%3]
-
-            if adj_matrix[j, k] == 0:
-                adj_matrix[j, k] = 1
-                adj_matrix[k, j] = 1
-
-                degrees[k] += 1
-                degrees[j] += 1
-
-    adj_matrix = adj_matrix.tocsr()
-
-    if exponent == 1:
-        degree_matrix = diags(degrees, format="csr", dtype=np.int8)
-        laplacian_matrix = degree_matrix - adj_matrix
-    else:
-        degree_matrix = diags(1/degrees, format="csr")
-        laplacian_matrix = eye(num_vertices, num_vertices, 0) - degree_matrix @ adj_matrix
-
-    return adj_matrix, degree_matrix, laplacian_matrix.astype(np.float64)
-
 
 def sample_colormap(scalars, name="inferno"):
 

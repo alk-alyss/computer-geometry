@@ -47,20 +47,14 @@ class AppWindow:
         self.triangles = None
         self.tree = None
         self.selected_vertex = None
+        self.laplacian = None
         self.eigenvectors = None
-        self.which = "mesh"
         self.current_eigenvector = 0
 
         #materials
         self.matlit = rendering.MaterialRecord()
         self.matlit.shader = "defaultLit"
         self.matlit.point_size = 6
-        self.matunlit = rendering.MaterialRecord()
-        self.matunlit.shader = "defaultUnlit"
-        self.matunlit.point_size = 6
-        self.matline = rendering.MaterialRecord()
-        self.matline.shader = "unlitLine"
-        self.matline.line_width = 3
 
     def _init_menubar(self):
 
@@ -128,10 +122,10 @@ class AppWindow:
         dlg.set_on_cancel(self._on_file_dialog_cancel)
         dlg.set_on_done(self._on_load_dialog_done)
         self.window.show_dialog(dlg)
-    
+
     def _on_file_dialog_cancel(self):
         self.window.close_dialog()
-    
+
     def _on_load_dialog_done(self, filename):
         self.window.close_dialog()
         self.load(filename)
@@ -142,10 +136,10 @@ class AppWindow:
     def _preprocess(self, m):
 
         vertices, triangles = np.asarray(m.vertices), np.asarray(m.triangles)
-     
+
         #centering
         vertices = vertices - vertices.mean(0)
-        
+
         #unit_sphere_normalization
         norm = np.max((vertices * vertices).sum(-1))
         vertices = vertices / np.sqrt(norm)
@@ -162,7 +156,7 @@ class AppWindow:
                 ind = int(np.asarray(ind)[0])
                 self.selected_vertex = ind
                 return self.vertices[ind]
-                
+
             else:
                 d = self.vertices - query
                 d = np.argmin((d * d).sum(-1))
@@ -180,10 +174,10 @@ class AppWindow:
         #checking the type of geometry
         if geometry_type & o3d.io.CONTAINS_TRIANGLES:
             self.geometry = o3d.io.read_triangle_model(path).meshes[0].mesh
-            
+
         if self.geometry is None:
             print("[Info]", path, "appears to not be a triangle mesh")
-            return 
+            return
 
         #preprocessing and setting geometry
         self.geometry = self._preprocess(self.geometry)
@@ -193,6 +187,7 @@ class AppWindow:
         #setting vertex and triangle data for easy access
         self.vertices = np.asarray(self.geometry.vertices)
         self.triangles = np.asarray(self.geometry.triangles)
+        self.laplacian = U.random_walk_laplacian(self.triangles)
 
         #initializing kd-tree for quick searches
         self.tree = o3d.geometry.KDTreeFlann(self.geometry)
@@ -203,7 +198,7 @@ class AppWindow:
         self._scene.setup_camera(60, bounds, bounds.get_center())
 
     def _on_layout(self, layout_context):
-        
+
         r = self.window.content_rect
         self._scene.frame = r
 
@@ -211,34 +206,19 @@ class AppWindow:
 
         print("key pressed: ", event.key)
 
-        #number key -> ring neighborhood
-        if event.key <= 57 and event.key >= 48:
-            self._show_k_ring(event.key-48)
-
-        #C key - delta coordinates
-        if event.key == 99:
-            self._show_delta_coordinates()
-            return gui.Widget.EventCallbackResult.HANDLED
-
-        #S key - eigendecomposition and 
-        elif event.key == 115:
-            self._show_eigendecomposition()
-            return gui.Widget.EventCallbackResult.HANDLED
-        
-        #V key - reset geometry and redraw scene
-        elif event.key == 118:
+        #R key - reset geometry and redraw scene
+        if event.key == 114:
             self._reset_geometry()
             self._redraw_scene()
             return gui.Widget.EventCallbackResult.HANDLED
-        
-        #T key - toggle mesh or lineset
-        elif event.key == 116 and event.type == KeyEvent.Type.UP:
-            self.which = "line" if self.which == "mesh" else "mesh"
-            print("mode = ", self.which)
+
+        #S key - eigendecomposition and
+        elif event.key == 115:
+            self._show_eigendecomposition()
             return gui.Widget.EventCallbackResult.HANDLED
-        
-        #R key - eigenvector visualization mode
-        elif event.key == 114:
+
+        #V key - eigenvector visualization mode
+        elif event.key == 118:
             self._calc_eigenvectors()
             print("eigenvectors calculated.")
             return gui.Widget.EventCallbackResult.HANDLED
@@ -248,7 +228,7 @@ class AppWindow:
             self.current_eigenvector = self.current_eigenvector -1 if self.current_eigenvector > 0 else 0
             print("current eigenvector: ", self.current_eigenvector)
             return gui.Widget.EventCallbackResult.HANDLED
-        
+
         #right or up arrow keys - increase eigenvector counter
         elif event.key == 264 or event.key == 265:
             self.current_eigenvector = self.current_eigenvector +1 if self.current_eigenvector < self.vertices.shape[0]-1 else self.vertices.shape[0]-1
@@ -275,22 +255,12 @@ class AppWindow:
             o3d.utility.Vector3iVector(self.triangles)
         )
 
-        self.wire = o3d.geometry.LineSet.create_from_triangle_mesh(self.geometry).paint_uniform_color([0,0,0])
-
-        self.pc = o3d.geometry.PointCloud(self.geometry.vertices).paint_uniform_color([0,0,0])
-
     def _redraw_scene(self):
 
         #clearing scene
         self._scene.scene.clear_geometry()
-        
-        #if line mode then draw lineset
-        if self.which == "line":
-            self._scene.scene.add_geometry("__wire__", self.wire, self.matline)
-            self._scene.scene.add_geometry("__points__", self.pc, self.matunlit)
 
-        elif self.which == "mesh":
-            self._scene.scene.add_geometry("__model__", self.geometry, self.matlit)
+        self._scene.scene.add_geometry("__model__", self.geometry, self.matlit)
 
 
 def main():

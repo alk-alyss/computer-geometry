@@ -193,6 +193,7 @@ class AppWindow:
             #setting vertex and triangle data for easy access
             self.vertices = np.asarray(self.geometry.vertices)
             self.triangles = np.asarray(self.geometry.triangles)
+            self.laplacian = U.random_walk_laplacian(self.triangles)
 
             #initializing kd-tree for quick searches
             self.tree = o3d.geometry.KDTreeFlann(self.geometry)
@@ -349,7 +350,7 @@ class AppWindow:
     def _show_delta_coordinates(self):
 
         #calculate delta coordinates
-        delta = U.delta_coordinates(self.vertices, self.triangles, use_laplacian=True)
+        delta = U.delta_coordinates(self.vertices, self.triangles, self.laplacian, use_laplacian=True)
 
         #calculating norm of delta vector
         norm = np.sqrt((delta * delta).sum(-1))
@@ -439,36 +440,38 @@ class AppWindow:
             self.geometry.vertex_colors = o3d.utility.Vector3dVector(colors)
             self._redraw_scene()
 
-    def _laplacian_smoothing(self, smoothing_factor=0.5, iterations=5):
+    def _laplacian_smoothing(self, smoothing_factor=0.5, iterations=1):
 
-        new_vecs = self.vertices
-        for i in range(iterations):
-            # Get delta coordinates
-            delta = U.delta_coordinates(new_vecs, self.triangles, use_laplacian=False)
+        if self.geometry is not None:
+            new_vecs = self.vertices.copy()
+            for i in range(iterations):
+                # Get delta coordinates
+                delta = U.delta_coordinates(new_vecs, self.triangles, laplacian=self.laplacian)
 
-            # Calculate new vectors from original and delta vectors
-            new_vecs = new_vecs + smoothing_factor*delta
-
-        # Display new vectors
-        self.geometry.vertices = o3d.utility.Vector3dVector(new_vecs)
-        self._redraw_scene()
-
-    def _taubin_smooting(self, shrinking_factor=0.5, inflating_factor=0.5, iterations=10):
-
-        new_vecs = self.vertices
-        for i in range(iterations*2):
-            # Get delta coordinates
-            delta = U.delta_coordinates(new_vecs, self.triangles, use_laplacian=True)
-
-            if i%2:
                 # Calculate new vectors from original and delta vectors
-                new_vecs = new_vecs + inflating_factor*delta
-            else:
-                new_vecs = new_vecs - shrinking_factor*delta
+                new_vecs = new_vecs - smoothing_factor*delta
 
-        # Display new vectors
-        self.geometry.vertices = o3d.utility.Vector3dVector(new_vecs)
-        self._redraw_scene()
+            # Display new vectors
+            self.geometry.vertices = o3d.utility.Vector3dVector(new_vecs)
+            self._redraw_scene()
+
+    def _taubin_smooting(self, shrinking_factor=0.5, inflating_factor=0.5, iterations=1):
+
+        if self.geometry is not None:
+            new_vecs = self.vertices.copy()
+            for i in range(iterations*2):
+                # Get delta coordinates
+                delta = U.delta_coordinates(new_vecs, self.triangles, laplacian=self.laplacian)
+
+                if i%2:
+                    # Calculate new vectors from original and delta vectors
+                    new_vecs = new_vecs + inflating_factor*delta
+                else:
+                    new_vecs = new_vecs - shrinking_factor*delta
+
+            # Display new vectors
+            self.geometry.vertices = o3d.utility.Vector3dVector(new_vecs)
+            self._redraw_scene()
 
 def main():
 
