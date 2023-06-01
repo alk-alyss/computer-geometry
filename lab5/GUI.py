@@ -128,10 +128,10 @@ class AppWindow:
         dlg.set_on_cancel(self._on_file_dialog_cancel)
         dlg.set_on_done(self._on_load_dialog_done)
         self.window.show_dialog(dlg)
-    
+
     def _on_file_dialog_cancel(self):
         self.window.close_dialog()
-    
+
     def _on_load_dialog_done(self, filename):
         self.window.close_dialog()
         self.load(filename)
@@ -142,10 +142,10 @@ class AppWindow:
     def _preprocess(self, m):
 
         vertices, triangles = np.asarray(m.vertices), np.asarray(m.triangles)
-     
+
         #centering
         vertices = vertices - vertices.mean(0)
-        
+
         #unit_sphere_normalization
         norm = np.max((vertices * vertices).sum(-1))
         vertices = vertices / np.sqrt(norm)
@@ -162,7 +162,7 @@ class AppWindow:
                 ind = int(np.asarray(ind)[0])
                 self.selected_vertex = ind
                 return self.vertices[ind]
-                
+
             else:
                 d = self.vertices - query
                 d = np.argmin((d * d).sum(-1))
@@ -180,10 +180,10 @@ class AppWindow:
         #checking the type of geometry
         if geometry_type & o3d.io.CONTAINS_TRIANGLES:
             self.geometry = o3d.io.read_triangle_model(path).meshes[0].mesh
-            
+
         if self.geometry is None:
             print("[Info]", path, "appears to not be a triangle mesh")
-            return 
+            return
         else:
             #preprocessing and setting geometry
             self.geometry = self._preprocess(self.geometry)
@@ -203,7 +203,7 @@ class AppWindow:
             self._scene.setup_camera(60, bounds, bounds.get_center())
 
     def _on_layout(self, layout_context):
-        
+
         r = self.window.content_rect
         self._scene.frame = r
 
@@ -220,27 +220,40 @@ class AppWindow:
             self._show_delta_coordinates()
             return gui.Widget.EventCallbackResult.HANDLED
 
-        #S key - eigendecomposition and 
+        #S key - eigendecomposition and
         elif event.key == 115:
             self._show_eigendecomposition()
+            print("eigendecomposition done")
             return gui.Widget.EventCallbackResult.HANDLED
-        
+
         #V key - reset geometry and redraw scene
         elif event.key == 118:
             self._reset_geometry()
             self._redraw_scene()
             return gui.Widget.EventCallbackResult.HANDLED
-        
+
         #T key - toggle mesh or lineset
         elif event.key == 116 and event.type == KeyEvent.Type.UP:
             self.which = "line" if self.which == "mesh" else "mesh"
             print("mode = ", self.which)
             return gui.Widget.EventCallbackResult.HANDLED
-        
+
         #R key - eigenvector visualization mode
         elif event.key == 114:
             self._calc_eigenvectors()
             print("eigenvectors calculated.")
+            return gui.Widget.EventCallbackResult.HANDLED
+
+        #L key - laplacian smoothing
+        elif event.key == 108:
+            self._laplacian_smoothing()
+            print("laplacian smoothing done")
+            return gui.Widget.EventCallbackResult.HANDLED
+
+        #B key - taubin smooting
+        elif event.key == 98:
+            self._taubin_smooting()
+            print("taubin smoothing done")
             return gui.Widget.EventCallbackResult.HANDLED
 
         #left or bottom arrow keys - decrease eigenvector counter
@@ -248,7 +261,7 @@ class AppWindow:
             self.current_eigenvector = self.current_eigenvector -1 if self.current_eigenvector > 0 else 0
             print("current eigenvector: ", self.current_eigenvector)
             return gui.Widget.EventCallbackResult.HANDLED
-        
+
         #right or up arrow keys - increase eigenvector counter
         elif event.key == 264 or event.key == 265:
             self.current_eigenvector = self.current_eigenvector +1 if self.current_eigenvector < self.vertices.shape[0]-1 else self.vertices.shape[0]-1
@@ -286,7 +299,7 @@ class AppWindow:
                     world = self._scene.scene.camera.unproject(
                         x, y, depth, self._scene.frame.width,
                         self._scene.frame.height)
-                    
+
                     #finding closest mesh vertex
                     match = self._find_match(world)
 
@@ -298,10 +311,10 @@ class AppWindow:
 
             self._scene.scene.scene.render_to_depth_image(depth_callback)
             return gui.Widget.EventCallbackResult.HANDLED
-    
+
         elif event.type == MouseEvent.Type.BUTTON_DOWN:
             return gui.Widget.EventCallbackResult.HANDLED
-        
+
         return gui.Widget.EventCallbackResult.HANDLED
 
     def _set_projection(self):
@@ -324,7 +337,7 @@ class AppWindow:
 
         #clearing scene
         self._scene.scene.clear_geometry()
-        
+
         #if line mode then draw lineset
         if self.which == "line":
             self._scene.scene.add_geometry("__wire__", self.wire, self.matline)
@@ -388,6 +401,7 @@ class AppWindow:
             #forming the eigenvector matrix with only the significant components
             U_k = vecs#[:, 0:keep_components]
             V_filtered = U_k @ (U_k.T @ self.vertices)
+            # V_filtered = (U_k.T @ self.vertices) @ U_k
 
             #setting the vertices to be the filtered ones
             self.geometry.vertices = o3d.utility.Vector3dVector(V_filtered)
@@ -398,23 +412,24 @@ class AppWindow:
     def _calc_eigenvectors(self):
 
         if self.geometry is not None:
-            
+
             #calculating the graph laplacian
             L = U.graph_laplacian(self.triangles).astype(np.float32)
-            
+
             #performing eigendecomposition
             vals, vecs = eigsh(L)
+            print(vecs.shape)
 
             #sorting according to eigenvalue
             sort_idx = np.argsort(vals)
             self.eigenvectors = vecs[:, sort_idx]
 
     def _show_eigenvector(self):
-        
+
         if self.eigenvectors is not None:
-            
+
             # colors = np.zeros_like(self.vertices)
-            
+
             scalars = self.eigenvectors[self.current_eigenvector]
             scalars = (scalars - scalars.min()) / (scalars.max() - scalars.min())
 
@@ -423,6 +438,37 @@ class AppWindow:
 
             self.geometry.vertex_colors = o3d.utility.Vector3dVector(colors)
             self._redraw_scene()
+
+    def _laplacian_smoothing(self, smoothing_factor=0.5, iterations=5):
+
+        new_vecs = self.vertices
+        for i in range(iterations):
+            # Get delta coordinates
+            delta = U.delta_coordinates(new_vecs, self.triangles, use_laplacian=False)
+
+            # Calculate new vectors from original and delta vectors
+            new_vecs = new_vecs + smoothing_factor*delta
+
+        # Display new vectors
+        self.geometry.vertices = o3d.utility.Vector3dVector(new_vecs)
+        self._redraw_scene()
+
+    def _taubin_smooting(self, shrinking_factor=0.5, inflating_factor=0.5, iterations=10):
+
+        new_vecs = self.vertices
+        for i in range(iterations*2):
+            # Get delta coordinates
+            delta = U.delta_coordinates(new_vecs, self.triangles, use_laplacian=True)
+
+            if i%2:
+                # Calculate new vectors from original and delta vectors
+                new_vecs = new_vecs + inflating_factor*delta
+            else:
+                new_vecs = new_vecs - shrinking_factor*delta
+
+        # Display new vectors
+        self.geometry.vertices = o3d.utility.Vector3dVector(new_vecs)
+        self._redraw_scene()
 
 def main():
 

@@ -39,7 +39,7 @@ def adjacency_matrix_dense(triangles, num_vertices=None):
 
     if num_vertices is None:
         num_vertices = triangles.max()+1
-    
+
     adj_matrix = np.zeros((num_vertices, num_vertices), dtype=np.uint16)
 
     for tri in triangles:
@@ -50,7 +50,7 @@ def adjacency_matrix_dense(triangles, num_vertices=None):
         adj_matrix[v3, v2] = 1
         adj_matrix[v3, v1] = 1
         adj_matrix[v1, v3] = 1
-    
+
     return adj_matrix
 
 #TASK-3 (Lab)
@@ -58,7 +58,7 @@ def adjacency_matrix_sparse(triangles, num_vertices = None):
 
     if num_vertices is None:
         num_vertices = triangles.max()+1
-    
+
     adj_matrix = lil_matrix((num_vertices, num_vertices), dtype=np.uint16)
 
     for tri in triangles:
@@ -69,26 +69,24 @@ def adjacency_matrix_sparse(triangles, num_vertices = None):
         adj_matrix[v3, v2] = 1
         adj_matrix[v3, v1] = 1
         adj_matrix[v1, v3] = 1
-    
+
     return adj_matrix.tocsr()
 
 def adjacency_matrix(triangles, num_vertices=None):
-    return adjacency_matrix_sparse(triangles, num_vertices)
-    # return adjacency_matrix_dense(triangles, num_vertices)
+    # return adjacency_matrix_sparse(triangles, num_vertices)
+    return adjacency_matrix_dense(triangles, num_vertices)
 
-#TASK-3 (Lab) 
+#TASK-3 (Lab)
 def degree_matrix(adj, exponent=1):
 
     num_vertices = adj.shape[0]
     diagonals = np.zeros(num_vertices)
 
     if exponent==1:
-        for i in range(num_vertices):
-            diagonals[i] = adj[i,:].toarray().sum()
+        diagonals = adj.sum(axis=0)
         return diags(diagonals, format="csr", dtype=np.int32)
     else:
-        for i in range(num_vertices):
-            diagonals[i] = adj[i,:].toarray().sum().astype(np.float32)**exponent
+        diagonals = adj.sum(axis=0).astype(np.float32)**exponent
         return diags(diagonals, format="csr", dtype=np.float32)
 
 #TASK-2
@@ -142,10 +140,10 @@ def k_ring(idx, adj_list, k = 1):
     return closed_list
 
 def k_ring_recursive(idx, triangles, k=1):
-    
+
     if not k:
         return np.array([])
-    
+
     if isinstance(idx, int):
         idx = np.array([idx], dtype=np.uint16)
 
@@ -167,7 +165,7 @@ def k_ring_adjacency(idx, triangles, k=1, num_vertices=None):
 
     adj_matrix = adj_matrix ** k
 
-    neighbors = adj_matrix[idx, :].toarray()
+    neighbors = adj_matrix[idx, :]
 
     return neighbors.nonzero()[1]
 
@@ -195,12 +193,12 @@ def get_adjacency_lists_and_degrees(triangles, num_vertices):
 
         neighbours[triangle[2]].add(triangle[0])
         neighbours[triangle[2]].add(triangle[1])
-    
+
     degrees = []
     for i,neighbour in enumerate(neighbours):
         neighbours[i] = list(neighbour)
         degrees.append(len(neighbour))
-    
+
     return neighbours, degrees
 
 def get_adjacency_degree_and_laplacian_matrix(triangles, exponent, num_vertices):
@@ -268,7 +266,7 @@ def random_walk_laplacian(triangles, subtract=True):
         L = eye(num_vertices, num_vertices, 0) - Dinv @ A
     else:
         L = Dinv @ A
-    
+
     return L
 
 if __name__ == "__main__":
