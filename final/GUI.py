@@ -208,40 +208,54 @@ class AppWindow:
         if event.type == KeyEvent.Type.UP:
             return gui.Widget.EventCallbackResult.HANDLED
 
+        eventFired = True
         match event.key:
             case 114: #R - reset geometry and redraw scene
+                print("Reset geometry...")
                 self._reset_geometry()
                 self._redraw_scene()
             case 110: #N - apply noise to the mesh
+                print("Appling noise to mesh...")
                 self._apply_noise()
             case 115: #S - simplify mesh
+                print("Simplifying mesh...")
                 self._simplify_mesh()
             case 99: #C - find similar coatings
+                print("Finding similar coatings...")
                 self._similar_coatings()
             case 111: #O - find similar objects
+                print("Finding similar objects...")
                 self._similar_objects()
             case 118: #V - eigenvector visualization mode
+                print("Calculating eigenvectors...")
                 self._calc_eigenvectors()
-                print("eigenvectors calculated.")
                 self._show_eigenvector()
-            case 264: #up arrow - next eigenvector
-                self.current_eigenvector = self.current_eigenvector +1 if self.current_eigenvector < self.eigenvectors.shape[0]-1 else self.eigenvectors.shape[0]-1
-                print("current eigenvector: ", self.current_eigenvector)
+            case _:
+                eventFired = False
+
+        if eventFired: print("done")
+
+        if self.eigenvalues is not None:
+            arrowKeyPressed = True
+            match event.key:
+                case 265: #up arrow - next eigenvector
+                    self.current_eigenvector += 1
+                    if self.current_eigenvector >= len(self.eigenvalues):
+                        self.current_eigenvector = len(self.eigenvalues)-1
+                case 266: #down arrow - previous eigenvector
+                    self.current_eigenvector -= 1
+                    if self.current_eigenvector < 0:
+                        self.current_eigenvector = 0
+                case 263: #left arrow - go to lowest eigenvector
+                    self.current_eigenvector = 0
+                case 264: #right arrow - go to highest eigenvector
+                    self.current_eigenvector = len(self.eigenvalues)-1
+                case _: # default
+                    arrowKeyPressed = False
+
+            if arrowKeyPressed:
+                print("Current eigenvector: ", self.current_eigenvector)
                 self._show_eigenvector()
-            case 266: #down arrow - previous eigenvector
-                self.current_eigenvector = self.current_eigenvector -1 if self.current_eigenvector > 0 else 0
-                print("current eigenvector: ", self.current_eigenvector)
-                self._show_eigenvector()
-            case 263: #left arrow - go to lowest eigenvector
-                self.current_eigenvector = 0
-                print("current eigenvector: ", self.current_eigenvector)
-                self._show_eigenvector()
-            case 265: #right arrow - go to highest eigenvector
-                self.current_eigenvector = 0
-                print("current eigenvector: ", self.current_eigenvector)
-                self._show_eigenvector()
-            case _: # default
-                return gui.Widget.EventCallbackResult.IGNORED
 
         return gui.Widget.EventCallbackResult.HANDLED
 
