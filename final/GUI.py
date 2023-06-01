@@ -1,7 +1,7 @@
 import open3d as o3d
 import open3d.visualization.gui as gui
 import open3d.visualization.rendering as rendering
-from open3d.visualization.gui import MouseEvent, KeyEvent
+from open3d.visualization.gui import KeyEvent
 from open3d.visualization.rendering import Camera
 import sys
 import os
@@ -208,61 +208,42 @@ class AppWindow:
         if event.type == KeyEvent.Type.UP:
             return gui.Widget.EventCallbackResult.HANDLED
 
-        # print("key pressed: ", event.key)
+        match event.key:
+            case 114: #R - reset geometry and redraw scene
+                self._reset_geometry()
+                self._redraw_scene()
+            case 110: #N - apply noise to the mesh
+                self._apply_noise()
+            case 115: #S - simplify mesh
+                self._simplify_mesh()
+            case 99: #C - find similar coatings
+                self._similar_coatings()
+            case 111: #O - find similar objects
+                self._similar_objects()
+            case 118: #V - eigenvector visualization mode
+                self._calc_eigenvectors()
+                print("eigenvectors calculated.")
+                self._show_eigenvector()
+            case 264: #up arrow - next eigenvector
+                self.current_eigenvector = self.current_eigenvector +1 if self.current_eigenvector < self.eigenvectors.shape[0]-1 else self.eigenvectors.shape[0]-1
+                print("current eigenvector: ", self.current_eigenvector)
+                self._show_eigenvector()
+            case 266: #down arrow - previous eigenvector
+                self.current_eigenvector = self.current_eigenvector -1 if self.current_eigenvector > 0 else 0
+                print("current eigenvector: ", self.current_eigenvector)
+                self._show_eigenvector()
+            case 263: #left arrow - go to lowest eigenvector
+                self.current_eigenvector = 0
+                print("current eigenvector: ", self.current_eigenvector)
+                self._show_eigenvector()
+            case 265: #right arrow - go to highest eigenvector
+                self.current_eigenvector = 0
+                print("current eigenvector: ", self.current_eigenvector)
+                self._show_eigenvector()
+            case _: # default
+                return gui.Widget.EventCallbackResult.IGNORED
 
-        #R key - reset geometry and redraw scene
-        if event.key == 114:
-            self._reset_geometry()
-            self._redraw_scene()
-            return gui.Widget.EventCallbackResult.HANDLED
-
-        #N key - apply noise to the mesh
-        elif event.key == 110:
-            self._apply_noise()
-            return gui.Widget.EventCallbackResult.HANDLED
-
-        #S key - simplify mesh
-        elif event.key == 115:
-            self._simplify_mesh()
-            return gui.Widget.EventCallbackResult.HANDLED
-
-        #C key - find similar coatings
-        elif event.key == 99:
-            self._similar_coatings()
-            return gui.Widget.EventCallbackResult.HANDLED
-
-        #O key - find similar objects
-        elif event.key == 111:
-            self._similar_objects()
-            return gui.Widget.EventCallbackResult.HANDLED
-
-        #V key - eigenvector visualization mode
-        elif event.key == 118:
-            self._calc_eigenvectors()
-            print("eigenvectors calculated.")
-            self._show_eigenvector()
-            return gui.Widget.EventCallbackResult.HANDLED
-
-        #left or bottom arrow keys - decrease eigenvector counter
-        elif event.key == 263 or event.key == 266:
-            self.current_eigenvector = self.current_eigenvector -1 if self.current_eigenvector > 0 else 0
-            print("current eigenvector: ", self.current_eigenvector)
-            self._show_eigenvector()
-            return gui.Widget.EventCallbackResult.HANDLED
-
-        #right or up arrow keys - increase eigenvector counter
-        elif event.key == 264 or event.key == 265:
-            self.current_eigenvector = self.current_eigenvector +1 if self.current_eigenvector < self.eigenvectors.shape[0]-1 else self.eigenvectors.shape[0]-1
-            print("current eigenvector: ", self.current_eigenvector)
-            self._show_eigenvector()
-            return gui.Widget.EventCallbackResult.HANDLED
-
-        #enter key - placeholder
-        elif event.key == 10:
-            return gui.Widget.EventCallbackResult.HANDLED
-
-        else:
-            return gui.Widget.EventCallbackResult.IGNORED
+        return gui.Widget.EventCallbackResult.HANDLED
 
     def _set_projection(self):
         self._scene.scene.camera.set_projection(
