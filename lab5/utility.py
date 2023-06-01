@@ -73,8 +73,8 @@ def adjacency_matrix_sparse(triangles, num_vertices = None):
     return adj_matrix.tocsr()
 
 def adjacency_matrix(triangles, num_vertices=None):
-    return adjacency_matrix_sparse(triangles, num_vertices).toarray()
-    # return adjacency_matrix_dense(triangles, num_vertices)
+    # return adjacency_matrix_sparse(triangles, num_vertices).toarray()
+    return adjacency_matrix_dense(triangles, num_vertices)
 
 #TASK-3 (Lab)
 def degree_matrix(adj, exponent=1):

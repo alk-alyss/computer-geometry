@@ -45,6 +45,7 @@ class AppWindow:
         self.geometry = None
         self.vertices = None
         self.triangles = None
+        self.laplacian = None
         self.tree = None
         self.selected_vertex = None
         self.eigenvectors = None
@@ -210,6 +211,9 @@ class AppWindow:
 
     def _on_key_pressed(self, event):
 
+        if event.type == KeyEvent.Type.UP:
+            return gui.Widget.EventCallbackResult.HANDLED
+
         print("key pressed: ", event.key)
 
         #number key -> ring neighborhood
@@ -265,7 +269,7 @@ class AppWindow:
 
         #right or up arrow keys - increase eigenvector counter
         elif event.key == 264 or event.key == 265:
-            self.current_eigenvector = self.current_eigenvector +1 if self.current_eigenvector < self.vertices.shape[0]-1 else self.vertices.shape[0]-1
+            self.current_eigenvector = self.current_eigenvector +1 if self.current_eigenvector < self.eigenvectors.shape[1]-1 else self.eigenvectors.shape[1]-1
             print("current eigenvector: ", self.current_eigenvector)
             return gui.Widget.EventCallbackResult.HANDLED
 
@@ -416,9 +420,10 @@ class AppWindow:
 
             #calculating the graph laplacian
             L = U.graph_laplacian(self.triangles).astype(np.float32)
+            # L = self.laplacian
 
             #performing eigendecomposition
-            vals, vecs = eigsh(L)
+            vals, vecs = eigsh(L, k=100)
             print(vecs.shape)
 
             #sorting according to eigenvalue
@@ -431,7 +436,8 @@ class AppWindow:
 
             # colors = np.zeros_like(self.vertices)
 
-            scalars = self.eigenvectors[self.current_eigenvector]
+            scalars = self.eigenvectors[:,self.current_eigenvector]
+            print(scalars)
             scalars = (scalars - scalars.min()) / (scalars.max() - scalars.min())
 
             # colors[:,0] = scalars
