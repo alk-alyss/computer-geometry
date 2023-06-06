@@ -41,15 +41,15 @@ class AppWindow:
         self._scene.set_on_key(self._on_key_pressed)
 
         #geometry container for future reference
-        self.geometry:o3d.geometry.TriangleMesh
-        self.vertices:np.ndarray
-        self.triangles:np.ndarray
+        self.geometry:o3d.geometry.TriangleMesh = None
+        self.vertices:np.ndarray = None
+        self.triangles:np.ndarray = None
         self.tree = None
 
-        self.laplacian:np.ndarray
+        self.laplacian:np.ndarray = None
 
-        self.eigenvalues:np.ndarray
-        self.eigenvectors:np.ndarray
+        self.eigenvalues:np.ndarray = None
+        self.eigenvectors:np.ndarray = None
         self.current_eigenvector = 0
 
         #materials
@@ -265,10 +265,11 @@ class AppWindow:
 
     def _reset_geometry(self):
 
-        self.geometry = o3d.geometry.TriangleMesh(
-            o3d.utility.Vector3dVector(self.vertices),
-            o3d.utility.Vector3iVector(self.triangles)
-        )
+        # self.geometry = o3d.geometry.TriangleMesh(
+        #     o3d.utility.Vector3dVector(self.vertices),
+        #     o3d.utility.Vector3iVector(self.triangles)
+        # )
+        self.geometry.vertices = o3d.utility.Vector3dVector(self.vertices)
 
     def _redraw_scene(self):
 
@@ -305,7 +306,7 @@ class AppWindow:
             self.geometry.vertex_colors = o3d.utility.Vector3dVector(colors)
             self._redraw_scene()
 
-    def _apply_noise(self, noise_factor=0.01):
+    def _apply_noise(self, noise_factor=1.5):
         if self.geometry is not None:
             new_vecs = np.asarray(self.geometry.vertices)
 
@@ -313,7 +314,7 @@ class AppWindow:
             delta = U.generate_noise(self.vertices.shape[0])
 
             # Calculate new vectors from original and delta vectors
-            new_vecs = new_vecs - noise_factor*delta
+            new_vecs = new_vecs - (noise_factor/100)*delta
 
             # Display new vectors
             self.geometry.vertices = o3d.utility.Vector3dVector(new_vecs)
