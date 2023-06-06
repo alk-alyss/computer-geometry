@@ -41,15 +41,15 @@ class AppWindow:
         self._scene.set_on_key(self._on_key_pressed)
 
         #geometry container for future reference
-        self.geometry = None
-        self.vertices = None
-        self.triangles = None
+        self.geometry:o3d.geometry.TriangleMesh
+        self.vertices:np.ndarray
+        self.triangles:np.ndarray
         self.tree = None
 
-        self.laplacian = None
+        self.laplacian:np.ndarray
 
-        self.eigenvalues = None
-        self.eigenvectors = None
+        self.eigenvalues:np.ndarray
+        self.eigenvectors:np.ndarray
         self.current_eigenvector = 0
 
         #materials
