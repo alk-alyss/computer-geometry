@@ -166,9 +166,6 @@ class AppWindow:
 
     def load(self, path):
 
-        #clearing scene
-        self._scene.scene.clear_geometry()
-
         #reading geometry type
         geometry_type = o3d.io.read_file_geometry_type(path)
 
@@ -193,10 +190,11 @@ class AppWindow:
         #initializing kd-tree for quick searches
         self.tree = o3d.geometry.KDTreeFlann(self.geometry)
 
-        #adding mesh to the scene and reconfiguring camera
-        self._scene.scene.add_geometry("__model__", self.geometry, self.matlit)
+        #reconfiguring camera
         bounds = self._scene.scene.bounding_box
         self._scene.setup_camera(60, bounds, bounds.get_center())
+
+        self._redraw_scene()
 
     def _on_layout(self, layout_context):
 
@@ -214,7 +212,7 @@ class AppWindow:
                 self._reset_geometry()
                 self._redraw_scene()
             case 110: #N - apply noise to the mesh
-                print("Appling noise to mesh...")
+                print("Applying noise to mesh...")
                 self._apply_noise()
             case 115: #S - simplify mesh
                 print("Simplifying mesh...")
@@ -253,7 +251,7 @@ class AppWindow:
                     arrowKeyPressed = False
 
             if arrowKeyPressed:
-                print("Current eigenvector: ", self.current_eigenvector)
+                print(f"Current eigenvector: {self.current_eigenvector} => {self.eigenvalues[self.current_eigenvector]}")
                 self._show_eigenvector()
 
         return gui.Widget.EventCallbackResult.HANDLED
@@ -275,6 +273,9 @@ class AppWindow:
 
         #clearing scene
         self._scene.scene.clear_geometry()
+
+        self.geometry.compute_triangle_normals()
+        self.geometry.compute_vertex_normals()
 
         self._scene.scene.add_geometry("__model__", self.geometry, self.matlit)
 
