@@ -1,4 +1,4 @@
-import open3d as o3d
+# import open3d as o3d
 import numpy as np
 import matplotlib.pyplot as plt
 import warnings
@@ -156,13 +156,27 @@ def random_walk_laplacian(triangles:np.ndarray, subtract:bool=True) -> np.ndarra
 
     return L
 
-def generate_noise(num_of_vertices:int, seed:int=42) -> np.ndarray:
+def generate_gaussian_noise(num_of_vertices:int, seed:int=42) -> np.ndarray:
     rng = np.random.default_rng(seed=seed)
 
-    delta = rng.random((num_of_vertices, 3))
+    delta = rng.random(num_of_vertices)
     delta -= 0.5
 
     return delta
 
+from perlin_noise import PerlinNoise
+
+def generate_perlin_noise(vertices:np.ndarray, seed:int=42) -> np.ndarray:
+    num_of_vertices = vertices.shape[0]
+    delta = np.zeros(num_of_vertices)
+
+    for layer in range(4):
+        noise_function = PerlinNoise(octaves=(layer+1)*5, seed=seed)
+        for i, vertex in enumerate(vertices):
+            delta[i] += noise_function([vertex[0], vertex[1], vertex[2]])
+
+    return delta
+    
+
 if __name__ == "__main__":
-    print(generate_noise(40))
+    pass

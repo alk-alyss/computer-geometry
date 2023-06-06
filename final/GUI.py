@@ -307,15 +307,19 @@ class AppWindow:
             self.geometry.vertex_colors = o3d.utility.Vector3dVector(colors)
             self._redraw_scene()
 
-    def _apply_noise(self, noise_factor=1.5):
+    def _apply_noise(self, noise_factor=3):
         if self.geometry is not None:
             new_vecs = np.asarray(self.geometry.vertices)
 
             # Generate noise
-            delta = U.generate_noise(self.vertices.shape[0])
+            noise = U.generate_gaussian_noise(self.vertices.shape[0])
+            # noise = U.generate_perlin_noise(self.vertices)
+
+            # Calculate delta vectors
+            delta = (noise*new_vecs.T).T
 
             # Calculate new vectors from original and delta vectors
-            new_vecs = new_vecs - (noise_factor/100)*delta
+            new_vecs = new_vecs + (noise_factor/100)*delta
 
             # Display new vectors
             self.geometry.vertices = o3d.utility.Vector3dVector(new_vecs)
