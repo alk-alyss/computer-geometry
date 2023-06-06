@@ -190,11 +190,12 @@ class AppWindow:
         #initializing kd-tree for quick searches
         self.tree = o3d.geometry.KDTreeFlann(self.geometry)
 
+        self._redraw_scene()
+
         #reconfiguring camera
         bounds = self._scene.scene.bounding_box
         self._scene.setup_camera(60, bounds, bounds.get_center())
 
-        self._redraw_scene()
 
     def _on_layout(self, layout_context):
 

@@ -160,9 +160,8 @@ def generate_gaussian_noise(num_of_vertices:int, seed:int=42) -> np.ndarray:
     rng = np.random.default_rng(seed=seed)
 
     delta = rng.random(num_of_vertices)
-    delta -= 0.5
 
-    return delta
+    return delta - 0.5
 
 from perlin_noise import PerlinNoise
 
