@@ -12,7 +12,7 @@ def adjacency_matrix_dense(triangles:np.ndarray, num_vertices:int=None) -> np.nd
 
     if num_vertices is None:
         num_vertices = triangles.max()+1
-    
+
     adj_matrix = np.zeros((num_vertices, num_vertices), dtype=np.uint16)
 
     for tri in triangles:
@@ -23,14 +23,14 @@ def adjacency_matrix_dense(triangles:np.ndarray, num_vertices:int=None) -> np.nd
         adj_matrix[v3, v2] = 1
         adj_matrix[v3, v1] = 1
         adj_matrix[v1, v3] = 1
-    
+
     return adj_matrix
 
 def adjacency_matrix_sparse(triangles:np.ndarray, num_vertices = None) -> csr_matrix:
 
     if num_vertices is None:
         num_vertices = triangles.max()+1
-    
+
     adj_matrix = lil_matrix((num_vertices, num_vertices), dtype=np.uint16)
 
     for tri in triangles:
@@ -41,7 +41,7 @@ def adjacency_matrix_sparse(triangles:np.ndarray, num_vertices = None) -> csr_ma
         adj_matrix[v3, v2] = 1
         adj_matrix[v3, v1] = 1
         adj_matrix[v1, v3] = 1
-    
+
     return adj_matrix.tocsr()
 
 def adjacency_matrix(triangles:np.ndarray, num_vertices:int=None) -> np.ndarray | csr_matrix:
@@ -90,10 +90,10 @@ def k_ring(idx:int, adj_list:np.ndarray, k:int = 1) -> List[int]:
     return closed_list
 
 def k_ring_recursive(idx:int | List[int], triangles:np.ndarray, k:int=1) -> np.ndarray:
-    
+
     if not k:
         return np.array([])
-    
+
     if isinstance(idx, int):
         idx = np.array([idx], dtype=np.uint16)
 
@@ -153,5 +153,16 @@ def random_walk_laplacian(triangles:np.ndarray, subtract:bool=True) -> np.ndarra
         L = eye(num_vertices, num_vertices, 0) - Dinv @ A
     else:
         L = Dinv @ A
-    
+
     return L
+
+def generate_noise(num_of_vertices:int, seed:int=42) -> np.ndarray:
+    rng = np.random.default_rng(seed=seed)
+
+    delta = rng.random((num_of_vertices, 3))
+    delta -= 0.5
+
+    return delta
+
+if __name__ == "__main__":
+    print(generate_noise(40))
