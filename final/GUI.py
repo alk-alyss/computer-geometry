@@ -200,8 +200,7 @@ class AppWindow:
 
     def _on_layout(self, layout_context):
 
-        r = self.window.content_rect
-        self._scene.frame = r
+        self._scene.frame = self.window.content_rect
 
     def _on_key_pressed(self, event):
 
@@ -306,8 +305,19 @@ class AppWindow:
             self.geometry.vertex_colors = o3d.utility.Vector3dVector(colors)
             self._redraw_scene()
 
-    def _apply_noise(self):
-        pass
+    def _apply_noise(self, noise_factor=0.01):
+        if self.geometry is not None:
+            new_vecs = np.asarray(self.geometry.vertices)
+
+            # Generate noise
+            delta = U.generate_noise(self.vertices.shape[0])
+
+            # Calculate new vectors from original and delta vectors
+            new_vecs = new_vecs - noise_factor*delta
+
+            # Display new vectors
+            self.geometry.vertices = o3d.utility.Vector3dVector(new_vecs)
+            self._redraw_scene()
 
     def _simplify_mesh(self):
         pass
