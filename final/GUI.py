@@ -283,7 +283,7 @@ class AppWindow:
         if self.eigenvectors is not None:
             return
 
-        L = U.graph_laplacian(self.triangles)
+        L = U.laplacian(self.triangles, type="tutte")
 
         #performing eigendecomposition
         vals, vecs = eigsh(L, k=400*2, which="BE")
