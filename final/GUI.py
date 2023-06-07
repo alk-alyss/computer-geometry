@@ -278,6 +278,9 @@ class AppWindow:
 
         self._scene.scene.add_geometry("__model__", self.geometry, self.matlit)
 
+    def _no_geometry(self):
+        print("There is no mesh in the scene")
+
     def _calc_eigenvectors(self):
 
         if self.eigenvectors is not None:
@@ -310,8 +313,9 @@ class AppWindow:
         self._redraw_scene()
 
     def _apply_noise(self, noise_factor=3, perlin=False):
+
         if self.geometry is None:
-            print("There is no mesh in the scene")
+            self._no_geometry()
             return
 
         new_vecs = np.asarray(self.geometry.vertices)
