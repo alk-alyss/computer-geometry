@@ -157,7 +157,7 @@ def random_walk_laplacian(triangles:np.ndarray, subtract:bool=True) -> np.ndarra
     return L
 
 def generate_gaussian_noise(num_of_vertices:int, seed:int=42) -> np.ndarray:
-    rng = np.random.default_rng(seed=seed)
+    rng = np.random.default_rng()
 
     delta = rng.random(num_of_vertices)
 
@@ -170,12 +170,12 @@ def generate_perlin_noise(vertices:np.ndarray, seed:int=42) -> np.ndarray:
     delta = np.zeros(num_of_vertices)
 
     for layer in range(4):
-        noise_function = PerlinNoise(octaves=(layer+1)*5, seed=seed)
+        noise_function = PerlinNoise(octaves=(layer+1)*5)
         for i, vertex in enumerate(vertices):
             delta[i] += noise_function([vertex[0], vertex[1], vertex[2]])
 
     return delta
-    
+
 
 if __name__ == "__main__":
     pass
