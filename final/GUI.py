@@ -47,8 +47,6 @@ class AppWindow:
         self.triangles:np.ndarray = None
         self.tree = None
 
-        self.laplacian:np.ndarray = None
-
         self.eigenvalues:np.ndarray = None
         self.eigenvectors:np.ndarray = None
         self.current_eigenvector = 0
@@ -187,7 +185,6 @@ class AppWindow:
         #setting vertex and triangle data for easy access
         self.vertices = np.asarray(self.geometry.vertices)
         self.triangles = np.asarray(self.geometry.triangles)
-        self.laplacian = U.random_walk_laplacian(self.triangles)
 
         #initializing kd-tree for quick searches
         self.tree = o3d.geometry.KDTreeFlann(self.geometry)
@@ -282,10 +279,10 @@ class AppWindow:
 
     def _calc_eigenvectors(self):
 
-        if self.laplacian is None or self.eigenvectors is not None:
+        if self.eigenvectors is not None:
             return
 
-        L = self.laplacian
+        L = U.graph_laplacian(self.triangles)
 
         #performing eigendecomposition
         vals, vecs = eigh(L)
@@ -294,10 +291,14 @@ class AppWindow:
         self.eigenvalues = np.argsort(vals)
         self.eigenvectors = vecs[:, self.eigenvalues]
 
+    def _clear_eigenvectors(self):
+        self.eigenvalues = None
+        self.eigenvectors = None
+        self.current_eigenvector = 0
+
     def _show_eigenvector(self):
 
-        if self.eigenvectors is None:
-            self._calc_eigenvectors()
+        self._calc_eigenvectors()
 
         scalars = self.eigenvectors[:,self.current_eigenvector]
         scalars = (scalars - scalars.min()) / (scalars.max() - scalars.min())
@@ -329,6 +330,8 @@ class AppWindow:
         # Display new vectors
         self.geometry.vertices = o3d.utility.Vector3dVector(new_vecs)
         self._redraw_scene()
+
+        self._clear_eigenvectors()
 
     def _simplify_mesh(self):
         pass
