@@ -206,34 +206,21 @@ class AppWindow:
         if event.type == KeyEvent.Type.UP:
             return gui.Widget.EventCallbackResult.HANDLED
 
-        eventFired = True
         match event.key:
-            case 114: #R - reset geometry and redraw scene
-                print("Reset geometry...")
+            case 114: #R - reset geometry
                 self._reset_geometry()
-                self._redraw_scene()
             case 103: #G - apply gaussian noise to the mesh
-                print("Applying gaussian noise to mesh...")
                 self._apply_noise()
             case 112: #N - apply perlin noise to the mesh
-                print("Applying perlin noise to mesh...")
                 self._apply_noise(perlin=True)
             case 115: #S - simplify mesh
-                print("Simplifying mesh...")
                 self._simplify_mesh()
             case 99: #C - find similar coatings
-                print("Finding similar coatings...")
                 self._similar_coatings()
             case 111: #O - find similar objects
-                print("Finding similar objects...")
                 self._similar_objects()
             case 118: #V - eigenvector visualization mode
-                print("Calculating eigenvectors...")
                 self._show_eigenvector()
-            case _:
-                eventFired = False
-
-        if eventFired: print("done")
 
         if self.eigenvalues is not None:
             arrowKeyPressed = True
@@ -281,7 +268,14 @@ class AppWindow:
     def _no_geometry(self):
         print("There is no mesh in the scene")
 
-    def _calc_eigenvectors(self):
+    def _calc_eigenvectors(self, count=400):
+        '''
+            Calculate count amount of low valued eigenvectors,
+            count amount of high valued eigenvectors
+            and store them in ascending order
+        '''
+
+        print("Calculating eigenvectors...")
 
         if self.eigenvectors is not None:
             return
@@ -289,11 +283,13 @@ class AppWindow:
         L = U.laplacian(self.triangles, type="tutte")
 
         #performing eigendecomposition
-        vals, vecs = eigsh(L, k=400*2, which="BE")
+        vals, vecs = eigsh(L, k=count*2, which="BE")
 
         #sorting according to eigenvalue
         self.eigenvalues = np.argsort(vals)
         self.eigenvectors = vecs[:, self.eigenvalues]
+        
+        print("done")
 
     def _clear_eigenvectors(self):
         self.eigenvalues = None
@@ -301,6 +297,10 @@ class AppWindow:
         self.current_eigenvector = 0
 
     def _show_eigenvector(self):
+
+        if self.geometry is None:
+            self._no_geometry()
+            return
 
         self._calc_eigenvectors()
 
@@ -317,6 +317,8 @@ class AppWindow:
         if self.geometry is None:
             self._no_geometry()
             return
+
+        print(f"Applying {'perlin' if perlin else 'gaussian'} noise to mesh...")
 
         new_vecs = np.asarray(self.geometry.vertices)
 
@@ -338,14 +340,44 @@ class AppWindow:
 
         self._clear_eigenvectors()
 
-    def _simplify_mesh(self):
-        pass
+        print("done")
+
+    def _simplify_mesh(self, simplification_factor=1):
+
+        if self.geometry is None:
+            self._no_geometry()
+            return
+
+        print("Simplifying mesh...")
+
+        self._calc_eigenvectors()
+
+        # get only eigenvectors with low eigenvalues
+        eigs_count = len(self.eigenvectors)//2
+        low_eigenvectors = self.eigenvectors[:eigs_count]
+
+        #forming the eigenvector matrix with only the significant components
+        keep_components = int(simplification_factor * eigs_count)
+        U_k = low_eigenvectors[:, :keep_components]
+        V_filtered = U_k @ (U_k.T @ self.vertices)
+        # V_filtered = (U_k.T @ self.vertices) @ U_k
+
+        #setting the vertices to be the filtered ones
+        self.geometry.vertices = o3d.utility.Vector3dVector(V_filtered)
+
+        #redrawing to see the difference
+        self._redraw_scene()
+
+        print("done")
+
 
     def _similar_coatings(self):
-        pass
+        print("Finding similar coatings...")
+        print("done")
 
     def _similar_objects(self):
-        pass
+        print("Finding similar objects...")
+        print("done")
 
 def main():
 
