@@ -128,28 +128,22 @@ def sample_colormap(scalars:np.ndarray, name:str="inferno") -> np.ndarray:
 
     return colors[:,:-1]
 
-def graph_laplacian(triangles:np.ndarray) -> np.ndarray|csr_matrix:
+def laplacian(triangles:np.ndarray, type:str="graph") -> np.ndarray|csr_matrix:
 
     num_vertices = triangles.max()+1
 
     A = adjacency_matrix(triangles, num_vertices=num_vertices)
-    D = degree_matrix(A, exponent=1)
 
-    L = D - A
+    exponent = 1 if type=="graph" else -1
+    D = degree_matrix(A, exponent=exponent)
 
-    return L
-
-def random_walk_laplacian(triangles:np.ndarray, subtract:bool=True) -> np.ndarray:
-
-    num_vertices = triangles.max()+1
-
-    A = adjacency_matrix(triangles, num_vertices=num_vertices)
-    Dinv = degree_matrix(A, exponent=-1)
-
-    if subtract:
-        L = eye(num_vertices, num_vertices, 0) - Dinv @ A
-    else:
-        L = Dinv @ A
+    match type:
+        case "graph":
+            L = D - A
+        case "tutte":
+            L = eye(num_vertices, num_vertices, 0, format="csr") - D @ A
+        case "random_walk":
+            L = D @ A
 
     return L
 
