@@ -41,6 +41,7 @@ class AppWindow:
         self._scene.set_on_key(self._on_key_pressed)
 
         #geometry container for future reference
+        self.filename:str = None
         self.geometry:o3d.geometry.TriangleMesh = None
         self.vertices:np.ndarray = None
         self.triangles:np.ndarray = None
@@ -129,6 +130,7 @@ class AppWindow:
 
     def _on_load_dialog_done(self, filename):
         self.window.close_dialog()
+        self.filename = filename
         self.load(filename)
 
     def _on_menu_quit(self):
@@ -164,7 +166,7 @@ class AppWindow:
                 self.selected_vertex = d
                 return self.vertices[ind]
 
-    def load(self, path):
+    def load(self, path, reset_camera=True):
 
         #reading geometry type
         geometry_type = o3d.io.read_file_geometry_type(path)
@@ -193,9 +195,9 @@ class AppWindow:
         self._redraw_scene()
 
         #reconfiguring camera
-        bounds = self._scene.scene.bounding_box
-        self._scene.setup_camera(60, bounds, bounds.get_center())
-
+        if reset_camera:
+            bounds = self._scene.scene.bounding_box
+            self._scene.setup_camera(60, bounds, bounds.get_center())
 
     def _on_layout(self, layout_context):
 
@@ -266,11 +268,7 @@ class AppWindow:
 
     def _reset_geometry(self):
 
-        # self.geometry = o3d.geometry.TriangleMesh(
-        #     o3d.utility.Vector3dVector(self.vertices),
-        #     o3d.utility.Vector3iVector(self.triangles)
-        # )
-        self.geometry.vertices = o3d.utility.Vector3dVector(self.vertices)
+        self.load(self.filename, reset_camera=False)
 
     def _redraw_scene(self):
 
