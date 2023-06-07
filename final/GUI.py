@@ -212,9 +212,12 @@ class AppWindow:
                 print("Reset geometry...")
                 self._reset_geometry()
                 self._redraw_scene()
-            case 110: #N - apply noise to the mesh
-                print("Applying noise to mesh...")
+            case 103: #G - apply gaussian noise to the mesh
+                print("Applying gaussian noise to mesh...")
                 self._apply_noise()
+            case 112: #N - apply perlin noise to the mesh
+                print("Applying perlin noise to mesh...")
+                self._apply_noise(perlin=True)
             case 115: #S - simplify mesh
                 print("Simplifying mesh...")
                 self._simplify_mesh()
@@ -308,13 +311,15 @@ class AppWindow:
             self.geometry.vertex_colors = o3d.utility.Vector3dVector(colors)
             self._redraw_scene()
 
-    def _apply_noise(self, noise_factor=3):
+    def _apply_noise(self, noise_factor=3, perlin=False):
         if self.geometry is not None:
             new_vecs = np.asarray(self.geometry.vertices)
 
             # Generate noise
-            noise = U.generate_gaussian_noise(self.vertices.shape[0])
-            # noise = U.generate_perlin_noise(self.vertices)
+            if perlin:
+                noise = U.generate_perlin_noise(self.vertices)
+            else:
+                noise = U.generate_gaussian_noise(self.vertices.shape[0])
 
             # Calculate delta vectors
             delta = (noise*new_vecs.T).T
