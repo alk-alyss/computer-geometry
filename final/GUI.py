@@ -229,7 +229,6 @@ class AppWindow:
                 self._similar_objects()
             case 118: #V - eigenvector visualization mode
                 print("Calculating eigenvectors...")
-                self._calc_eigenvectors()
                 self._show_eigenvector()
             case _:
                 eventFired = False
@@ -255,7 +254,7 @@ class AppWindow:
                     arrowKeyPressed = False
 
             if arrowKeyPressed:
-                print(f"Current eigenvector: {self.current_eigenvector} => {self.eigenvalues[self.current_eigenvector]}")
+                print(f"Current eigenvector: {self.eigenvalues[self.current_eigenvector]}")
                 self._show_eigenvector()
 
         return gui.Widget.EventCallbackResult.HANDLED
@@ -285,51 +284,53 @@ class AppWindow:
 
     def _calc_eigenvectors(self):
 
-        if self.laplacian is not None:
+        if self.laplacian is None or self.eigenvectors is not None:
+            return
 
-            L = self.laplacian
+        L = self.laplacian
 
-            #performing eigendecomposition
-            vals, vecs = eigh(L)
+        #performing eigendecomposition
+        vals, vecs = eigh(L)
 
-            #sorting according to eigenvalue
-            self.eigenvalues = np.argsort(vals)
-            self.eigenvectors = vecs[:, self.eigenvalues]
+        #sorting according to eigenvalue
+        self.eigenvalues = np.argsort(vals)
+        self.eigenvectors = vecs[:, self.eigenvalues]
 
     def _show_eigenvector(self):
 
-        if self.eigenvectors is not None:
+        if self.eigenvectors is None:
+            self._calc_eigenvectors()
 
-            # colors = np.zeros_like(self.vertices)
+        scalars = self.eigenvectors[:,self.current_eigenvector]
+        scalars = (scalars - scalars.min()) / (scalars.max() - scalars.min())
 
-            scalars = self.eigenvectors[:,self.current_eigenvector]
-            scalars = (scalars - scalars.min()) / (scalars.max() - scalars.min())
+        colors = U.sample_colormap(scalars)
 
-            # colors[:,0] = scalars
-            colors = U.sample_colormap(scalars)
-
-            self.geometry.vertex_colors = o3d.utility.Vector3dVector(colors)
-            self._redraw_scene()
+        self.geometry.vertex_colors = o3d.utility.Vector3dVector(colors)
+        self._redraw_scene()
 
     def _apply_noise(self, noise_factor=3, perlin=False):
-        if self.geometry is not None:
-            new_vecs = np.asarray(self.geometry.vertices)
+        if self.geometry is None:
+            print("There is no mesh in the scene")
+            return
 
-            # Generate noise
-            if perlin:
-                noise = U.generate_perlin_noise(self.vertices)
-            else:
-                noise = U.generate_gaussian_noise(self.vertices.shape[0])
+        new_vecs = np.asarray(self.geometry.vertices)
 
-            # Calculate delta vectors
-            delta = (noise*new_vecs.T).T
+        # Generate noise
+        if perlin:
+            noise = U.generate_perlin_noise(self.vertices)
+        else:
+            noise = U.generate_gaussian_noise(self.vertices.shape[0])
 
-            # Calculate new vectors from original and delta vectors
-            new_vecs = new_vecs + (noise_factor/100)*delta
+        # Calculate delta vectors
+        delta = (noise*new_vecs.T).T
 
-            # Display new vectors
-            self.geometry.vertices = o3d.utility.Vector3dVector(new_vecs)
-            self._redraw_scene()
+        # Calculate new vectors from original and delta vectors
+        new_vecs = new_vecs + (noise_factor/100)*delta
+
+        # Display new vectors
+        self.geometry.vertices = o3d.utility.Vector3dVector(new_vecs)
+        self._redraw_scene()
 
     def _simplify_mesh(self):
         pass
