@@ -45,20 +45,17 @@ def adjacency_matrix_sparse(triangles:np.ndarray, num_vertices = None) -> csr_ma
     return adj_matrix.tocsr()
 
 def adjacency_matrix(triangles:np.ndarray, num_vertices:int=None) -> np.ndarray | csr_matrix:
-    # return adjacency_matrix_sparse(triangles, num_vertices)
-    return adjacency_matrix_dense(triangles, num_vertices)
+    return adjacency_matrix_sparse(triangles, num_vertices)
+    # return adjacency_matrix_dense(triangles, num_vertices)
 
-def degree_matrix(adj:np.ndarray, exponent:int=1) -> csr_matrix:
+def degree_matrix(adj:np.ndarray|csr_matrix, exponent:int=1) -> csr_matrix:
 
     num_vertices = adj.shape[0]
-    diagonals = np.zeros(num_vertices)
+    diagonals = np.squeeze(np.asarray(adj.sum(axis=0)))
 
-    if exponent==1:
-        diagonals = adj.sum(axis=0)
-        return diags(diagonals, format="csr", dtype=np.int32)
-    else:
-        diagonals = np.float_power(adj.sum(axis=0), exponent)
-        return diags(diagonals, format="csr", dtype=np.float32)
+    diagonals = np.power(diagonals, exponent, dtype=np.float32)
+
+    return diags(diagonals, format="csr")
 
 def delta_coordinates(vertices:np.ndarray, laplacian:np.ndarray) -> np.ndarray:
 
@@ -131,7 +128,7 @@ def sample_colormap(scalars:np.ndarray, name:str="inferno") -> np.ndarray:
 
     return colors[:,:-1]
 
-def graph_laplacian(triangles:np.ndarray) -> np.ndarray:
+def graph_laplacian(triangles:np.ndarray) -> np.ndarray|csr_matrix:
 
     num_vertices = triangles.max()+1
 

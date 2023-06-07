@@ -8,6 +8,7 @@ import os
 import numpy as np
 import utility as U
 import platform
+from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import eigs, eigsh
 from scipy.linalg import eigh
 
@@ -285,7 +286,7 @@ class AppWindow:
         L = U.graph_laplacian(self.triangles)
 
         #performing eigendecomposition
-        vals, vecs = eigh(L)
+        vals, vecs = eigsh(L, k=400*2, which="BE")
 
         #sorting according to eigenvalue
         self.eigenvalues = np.argsort(vals)
