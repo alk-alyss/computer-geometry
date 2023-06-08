@@ -385,11 +385,27 @@ class AppWindow:
 
 
     def _similar_coatings(self):
+
+        if self.geometry is None:
+            self._no_geometry()
+            return
+
         print("Finding similar coatings...")
+
+        high_eigenvectors = self._get_eigenvectors(high=True)
+
         print("done")
 
     def _similar_objects(self):
+
+        if self.geometry is None:
+            self._no_geometry()
+            return
+
         print("Finding similar objects...")
+
+        low_eigenvectors = self._get_eigenvectors()
+
         print("done")
 
 def main():
