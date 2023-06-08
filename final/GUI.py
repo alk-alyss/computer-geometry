@@ -275,12 +275,12 @@ class AppWindow:
             and store them in ascending order
         '''
 
-        print("Calculating eigenvectors...")
-
         if self.eigenvectors is not None:
             return
 
-        L = U.laplacian(self.triangles, type="tutte")
+        print("Calculating eigenvectors...")
+
+        L = U.laplacian(self.triangles, type="graph")
 
         #performing eigendecomposition
         vals, vecs = eigsh(L, k=count*2, which="BE")
@@ -342,7 +342,7 @@ class AppWindow:
 
         print("done")
 
-    def _simplify_mesh(self, simplification_factor=1):
+    def _simplify_mesh(self, keep_count=10):
 
         if self.geometry is None:
             self._no_geometry()
@@ -353,17 +353,16 @@ class AppWindow:
         self._calc_eigenvectors()
 
         # get only eigenvectors with low eigenvalues
-        eigs_count = len(self.eigenvectors)//2
-        low_eigenvectors = self.eigenvectors[:eigs_count]
+        eigs_count = self.eigenvectors.shape[1]//2
+        low_eigenvectors = self.eigenvectors[:, :eigs_count]
 
         #forming the eigenvector matrix with only the significant components
-        keep_components = int(simplification_factor * eigs_count)
-        U_k = low_eigenvectors[:, :keep_components]
-        V_filtered = U_k @ (U_k.T @ self.vertices)
-        # V_filtered = (U_k.T @ self.vertices) @ U_k
+        transformation_matrix = low_eigenvectors[:, :keep_count]
+        print(f"Keep {transformation_matrix.shape[1]} eigenvectors")
+        new_vecs = transformation_matrix @ (transformation_matrix.T @ self.vertices)
 
         #setting the vertices to be the filtered ones
-        self.geometry.vertices = o3d.utility.Vector3dVector(V_filtered)
+        self.geometry.vertices = o3d.utility.Vector3dVector(new_vecs)
 
         #redrawing to see the difference
         self._redraw_scene()
