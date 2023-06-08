@@ -165,7 +165,7 @@ class AppWindow:
                 self.selected_vertex = d
                 return self.vertices[ind]
 
-    def load(self, path, reset_camera=True):
+    def load(self, path, reload=False):
 
         #reading geometry type
         geometry_type = o3d.io.read_file_geometry_type(path)
@@ -193,9 +193,13 @@ class AppWindow:
         self._redraw_scene()
 
         #reconfiguring camera
-        if reset_camera:
+        if not reload:
             bounds = self._scene.scene.bounding_box
             self._scene.setup_camera(60, bounds, bounds.get_center())
+        else:
+            self.eigenvectors = None
+            self.eigenvalues = None
+            self.current_eigenvector = 0
 
     def _on_layout(self, layout_context):
 
@@ -253,7 +257,7 @@ class AppWindow:
 
     def _reset_geometry(self):
 
-        self.load(self.filename, reset_camera=False)
+        self.load(self.filename, reload=True)
 
     def _redraw_scene(self):
 
@@ -291,10 +295,26 @@ class AppWindow:
         
         print("done")
 
-    def _clear_eigenvectors(self):
-        self.eigenvalues = None
-        self.eigenvectors = None
-        self.current_eigenvector = 0
+    def _get_eigenvectors(self, high=False) -> np.ndarray:
+        '''
+            Return one end of the eigenvectors range.
+            By default return the lowest eigenvectors.
+            If high==True return the highest eigenvectors.
+        '''
+
+        self._calc_eigenvectors()
+
+        start = 0
+        end = self.eigenvectors.shape[1]
+
+        eigs_count = self.eigenvectors.shape[1]//2
+
+        if high:
+            start = eigs_count
+        else:
+            end = eigs_count
+
+        return self.eigenvectors[:, start:end]
 
     def _show_eigenvector(self):
 
@@ -338,8 +358,6 @@ class AppWindow:
         self.geometry.vertices = o3d.utility.Vector3dVector(new_vecs)
         self._redraw_scene()
 
-        self._clear_eigenvectors()
-
         print("done")
 
     def _simplify_mesh(self, keep_count=10):
@@ -350,11 +368,7 @@ class AppWindow:
 
         print("Simplifying mesh...")
 
-        self._calc_eigenvectors()
-
-        # get only eigenvectors with low eigenvalues
-        eigs_count = self.eigenvectors.shape[1]//2
-        low_eigenvectors = self.eigenvectors[:, :eigs_count]
+        low_eigenvectors = self._get_eigenvectors()
 
         #forming the eigenvector matrix with only the significant components
         transformation_matrix = low_eigenvectors[:, :keep_count]
