@@ -309,7 +309,7 @@ class AppWindow:
         #sorting according to eigenvalue
         self.eigenvalues = np.argsort(vals)
         self.eigenvectors = vecs[:, self.eigenvalues]
-        
+
         print("done")
 
     def _get_eigenvectors(self, high=False) -> np.ndarray:
@@ -391,7 +391,7 @@ class AppWindow:
 
         #forming the eigenvector matrix with only the significant components
         print(f"Keep {keep_count} eigenvectors")
-        
+
         transformation_matrix = low_eigenvectors[:, :keep_count]
         new_vecs = transformation_matrix @ (transformation_matrix.T @ self.vertices)
 
