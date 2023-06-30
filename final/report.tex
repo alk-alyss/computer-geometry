@@ -5,6 +5,7 @@
 \usepackage[a4paper, margin=1.10in]{geometry}
 
 \usepackage{graphicx}
+\graphicspath{ {./images/} }
 \usepackage{amsmath}
 \usepackage{subcaption}
 
@@ -20,7 +21,9 @@
 
 \maketitle
 
+\vfill
 \tableofcontents
+\vfill
 \newpage
 
 \section{Σκοπός της εργασίας}
@@ -119,13 +122,58 @@ Fourier που χρησιμοποιείται στην ανάλυση σημάτ
 
 \subsection{Οπτικοποίηση Ιδιοδιανυσμάτων}
 
+\begin{figure}[h]
+	\begin{subfigure}{0.5\textwidth}
+		% \includegraphics[width=0.9\linewidth]{"low_frequency.png"}
+		\caption{Χαμηλόσυχνα ιδιοδιανύσματα}
+	\end{subfigure}
+	\begin{subfigure}{0.5\textwidth}
+		% \includegraphics[width=0.9\linewidth]{"high_frequency.png"}
+		\caption{Υψίσυχνα ιδιοδιανύσματα}
+	\end{subfigure}
+	\caption{Οπτικοποίηση της επιρροής των ιδιοδιανυσμάτων στο μοντέλο}
+\end{figure}
+
 
 \section{Προσθήκη θορύβου}
+Για να λειτουργήσει το επόμενο βήμα της εξομάλυνσης του μοντέλου,
+είναι απαραίτητο πρώτα να προστεθεί στο μοντέλο κάποιου είδους θορύβου.
+Έτσι είναι δυνατόν να γίνει σύγκριση ανάμεσα στο αρχικό μοντέλο,
+το θορυβώδες μοντέλο και το τελικό εξομαλυμμένο μοντέλο.
 
-\subsection{Gaussian noise}
+Για τους σκοπούς της εργασίας έχουν χρησιμοποιηθεί δύο αλγόριθμοι
+δημιουργίας θορύβου, οι Gaussian noise και Perlin noise.
+Σε κάθε περίπτωση το αποτέλεσμα του θορύβου έχει εφαρμοστεί στο
+μοντέλο με την εξής διαδικασία για κάθε κορυφή:
 
-\subsection{Perlin noise}
+\begin{itemize}
+	\item Δημιουργία ψευδοτυχαίου αριθμού με βάση κάποιο αλγόριθμο θορύβου
+	\item Εύρεση του καθέτου διανύσματος της κορυφής σε σχέση με το υπόλοιπο μοντέλο
+	\item Δημιουργία ενός διανύσματος, με βάση την τυχαία τιμή που αντιστοιχεί στην
+		κορυφή, παράλληλο στο κάθετο διάνυσμα της κορυφής
+	\item Προσθήκη του νέου διανύσματος στο κάθετο διάνυσμα της κορυφής,
+		πολλαπλασιασμένο κατά ένα παράγοντα (noise factor),
+		που καθορίζει πόσο να επηρεαστεί το μοντέλο από τον θόρυβο
+\end{itemize}
 
+Το αποτέλεσμα αυτής της διαδικασίας είναι το μοντέλο να αποκτήσει μια τραχύτητα στην
+επιφάνειά του, χωρίς όμως να έχουν προστεθεί παραπάνω κορυφές
+
+\begin{figure}[h]
+	\begin{subfigure}{0.5\textwidth}
+		% \includegraphics[width=0.9\linewidth]{"original_model.png"}
+		\caption{Αρχικό μοντέλο}
+	\end{subfigure}
+	\begin{subfigure}{0.5\textwidth}
+		% \includegraphics[width=0.9\linewidth]{"gaussian_noise.png"}
+		\caption{Μοντέλο με Gaussian Noise}
+	\end{subfigure}
+	\begin{subfigure}{0.5\textwidth}
+		% \includegraphics[width=0.9\linewidth]{"perlin_noise.png"}
+		\caption{Μοντέλο με Perlin Noise}
+	\end{subfigure}
+	\caption{Παράδειγμα εφαρμογής Θορύβου σε μοντέλο}
+\end{figure}
 
 \section{Εξομάλυνση μοντέλου}
 
