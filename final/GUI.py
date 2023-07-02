@@ -245,10 +245,10 @@ class AppWindow:
                         self.current_eigenvector = max_eigenvalue-1
                 case 266: #down arrow - previous eigenvector
                     self.current_eigenvector -= 1
-                    if self.current_eigenvector < 0:
-                        self.current_eigenvector = 0
+                    if self.current_eigenvector <= 0:
+                        self.current_eigenvector = 1
                 case 263: #left arrow - go to lowest eigenvector
-                    self.current_eigenvector = 0
+                    self.current_eigenvector = 1
                 case 264: #right arrow - go to highest eigenvector
                     self.current_eigenvector = max_eigenvalue-1
                 case _: # default
@@ -289,7 +289,7 @@ class AppWindow:
     def _no_geometry(self):
         print("There is no mesh in the scene")
 
-    def _calc_eigenvectors(self, count=400):
+    def _calc_eigenvectors(self, count=1000):
         '''
             Calculate count amount of low valued eigenvectors,
             count amount of high valued eigenvectors
