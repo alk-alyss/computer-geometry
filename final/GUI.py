@@ -289,7 +289,7 @@ class AppWindow:
     def _no_geometry(self):
         print("There is no mesh in the scene")
 
-    def _calc_eigenvectors(self, count=1000):
+    def _calc_eigenvectors(self, count=100):
         '''
             Calculate count amount of low valued eigenvectors,
             count amount of high valued eigenvectors

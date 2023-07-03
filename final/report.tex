@@ -127,32 +127,33 @@ Fourier που χρησιμοποιείται στην ανάλυση σημάτ
 πλήθος των κορυφών του μοντέλου, κάθε συνιστώσα αντιστοιχεί σε μια κορυφή.
 Άρα πραγματοποιήται κανονικοποίηση των συνιστωσών, έτσι ώστε όλες οι συνιστώσες να
 βρίσκονται στο διάστημα [0,1] και σε κάθε τιμή αντιστοιχίζεται ένα χρώμα
-από μια γραμμική κλίμακα χρωμάτων (colour gradient). Το τελικό αποτέλεσμα φαίνεται στα
-Σχήματα \ref{fig:vis1} \ref{fig:vis2} για τα χαμηλόσυχνα ιδιοδιανύσματα και στα Σχήματα
-\ref{fig:vis3} \ref{fig:vis4} για τα υψίσυχνα ιδιοδιανύσματα.
+από μια γραμμική κλίμακα χρωμάτων (colour gradient). Το τελικό αποτέλεσμα φαίνεται στο
+Σχήμα \ref{fig:visualization}
 
 \begin{figure}[h]
-	\begin{subfigure}{0.5\textwidth}
-		\includegraphics[width=0.9\linewidth]{"vl_freq.png"}
+	\centering
+	\begin{subfigure}{0.45\textwidth}
+		\includegraphics[width=\textwidth]{"vl_freq.png"}
 		\caption{Πολύ χαμηλόσυχνα ιδιοδιανύσματα}
 		\label{fig:vis1}
 	\end{subfigure}
-	\begin{subfigure}{0.5\textwidth}
-		\includegraphics[width=0.9\linewidth]{"l_freq.png"}
+	\begin{subfigure}{0.45\textwidth}
+		\includegraphics[width=\textwidth]{"l_freq.png"}
 		\caption{Χαμηλόσυχνα ιδιοδιανύσματα}
 		\label{fig:vis2}
 	\end{subfigure}
-	\begin{subfigure}{0.5\textwidth}
-		\includegraphics[width=0.9\linewidth]{"h_freq.png"}
+	\begin{subfigure}{0.45\textwidth}
+		\includegraphics[width=\textwidth]{"h_freq.png"}
 		\caption{Υψίσυχνα ιδιοδιανύσματα}
 		\label{fig:vis3}
 	\end{subfigure}
-	\begin{subfigure}{0.5\textwidth}
-		\includegraphics[width=0.9\linewidth]{"vh_freq.png"}
+	\begin{subfigure}{0.45\textwidth}
+		\includegraphics[width=\textwidth]{"vh_freq.png"}
 		\caption{Πολύ υψίσυχνα ιδιοδιανύσματα}
 		\label{fig:vis4}
 	\end{subfigure}
 	\caption{Οπτικοποίηση της επιρροής των ιδιοδιανυσμάτων στο μοντέλο}
+	\label{fig:visualization}
 \end{figure}
 
 Στην οπτικοποίηση των ιδιοδιανυσμάτων παρατηρείται η δημιουργία μοτίβων στα χρώματα.
@@ -191,19 +192,21 @@ Fourier που χρησιμοποιείται στην ανάλυση σημάτ
 επιφάνειά του, χωρίς όμως να έχουν προστεθεί παραπάνω κορυφές
 
 \begin{figure}[h]
-	\begin{subfigure}{0.5\textwidth}
-		\includegraphics[width=0.9\linewidth]{"original_model.png"}
+	\centering
+	\begin{subfigure}{0.4\textwidth}
+		\includegraphics[width=\textwidth]{"original_model.png"}
 		\caption{Αρχικό μοντέλο}
 	\end{subfigure}
-	\begin{subfigure}{0.5\textwidth}
-		\includegraphics[width=0.9\linewidth]{"gaussian_noise.png"}
+	\begin{subfigure}{0.4\textwidth}
+		\includegraphics[width=\textwidth]{"gaussian_noise.png"}
 		\caption{Μοντέλο με Gaussian Noise}
 	\end{subfigure}
-	\begin{subfigure}{0.5\textwidth}
-		\includegraphics[width=0.9\linewidth]{"perlin_noise.png"}
+	\begin{subfigure}{0.4\textwidth}
+		\includegraphics[width=\textwidth]{"perlin_noise.png"}
 		\caption{Μοντέλο με Perlin Noise}
 	\end{subfigure}
 	\caption{Παράδειγμα εφαρμογής Θορύβου σε μοντέλο}
+	\label{fig:noise}
 \end{figure}
 
 \section{Εξομάλυνση μοντέλου}
@@ -230,20 +233,21 @@ Fourier που χρησιμοποιείται στην ανάλυση σημάτ
 \end{itemize}
 
 \begin{figure}[h]
-	\begin{subfigure}{0.5\textwidth}
-		\includegraphics[width=0.9\linewidth]{"noisy_mesh.png"}
-		\caption{Θορυβώδες μοντέλο}
-	\end{subfigure}
-	\begin{subfigure}{0.5\textwidth}
-		\includegraphics[width=0.9\linewidth]{"simplified_mesh.png"}
+	\centering
+	\begin{subfigure}{0.4\textwidth}
+		\includegraphics[width=\textwidth]{"250_eigs.png"}
 		\caption{Εξομαλυνμένο μοντέλο (χρήση 250 ιδιοδιανυσμάτων)}
 	\end{subfigure}
-	\begin{subfigure}{0.5\textwidth}
-		\includegraphics[width=0.9\linewidth]{"simplified_mesh.png"}
+	\begin{subfigure}{0.4\textwidth}
+		\includegraphics[width=\textwidth]{"1000_eigs.png"}
 		\caption{Εξομαλυνμένο μοντέλο (χρήση 1000 ιδιοδιανυσμάτων)}
 	\end{subfigure}
-	\label{fig:simplify}
+	\begin{subfigure}{0.4\textwidth}
+		\includegraphics[width=\textwidth]{"noisy_mesh.png"}
+		\caption{Θορυβώδες μοντέλο}
+	\end{subfigure}
 	\caption{Παράδειγμα εξομαλυνσης μοντέλου}
+	\label{fig:simplify}
 \end{figure}
 
 Όπως φαίνεται στο Σχήμα \ref{fig:simplify}, η εξομάλυνση δεν είναι τέλεια
