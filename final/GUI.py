@@ -9,9 +9,8 @@ import numpy as np
 import utility as U
 import platform
 from scipy.sparse import csr_matrix
-from scipy.sparse.linalg import eigs, eigsh
-from scipy.linalg import eigh
-from copy import deepcopy
+from model import Model
+from typing import List
 
 isMacOS = (platform.system() == "Darwin")
 
@@ -25,7 +24,6 @@ class AppWindow:
         resource_path = gui.Application.instance.resource_path
         self.w_width = width
         self.w_height = height
-        self.first_click = True
 
         #boilerplate - initialize window & scene
         self.window = gui.Application.instance.create_window("Test", width, height)
@@ -42,16 +40,7 @@ class AppWindow:
         #set mouse and key callbacks
         self._scene.set_on_key(self._on_key_pressed)
 
-        #geometry container for future reference
-        self.filename:str = None
-        self.geometry:o3d.geometry.TriangleMesh = None
-        self.vertices:np.ndarray = None
-        self.triangles:np.ndarray = None
-        self.tree = None
-
-        self.eigenvalues:np.ndarray = None
-        self.eigenvectors:np.ndarray = None
-        self.current_eigenvector = 0
+        self.model:Model = None
 
         self.event_type = None
 
@@ -138,71 +127,15 @@ class AppWindow:
     def _on_menu_quit(self):
         gui.Application.instance.quit()
 
-    def _preprocess(self, m):
-
-        vertices, triangles = np.asarray(m.vertices), np.asarray(m.triangles)
-
-        #centering
-        vertices = vertices - vertices.mean(0)
-
-        #unit_sphere_normalization
-        norm = np.max((vertices * vertices).sum(-1))
-        vertices = vertices / np.sqrt(norm)
-
-        return o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vertices), o3d.utility.Vector3iVector(triangles))
-
-    def _find_match(self, query):
-
-        if self.geometry is not None:
-
-            ind = 0
-            if self.tree is not None:
-                _, ind, _ = self.tree.search_knn_vector_3d(query, 1)
-                ind = int(np.asarray(ind)[0])
-                self.selected_vertex = ind
-                return self.vertices[ind]
-
-            else:
-                d = self.vertices - query
-                d = np.argmin((d * d).sum(-1))
-                self.selected_vertex = d
-                return self.vertices[ind]
-
     def load(self, path):
 
-        #reading geometry type
-        geometry_type = o3d.io.read_file_geometry_type(path)
-
-        #checking the type of geometry
-        if geometry_type & o3d.io.CONTAINS_TRIANGLES:
-            self.geometry = o3d.io.read_triangle_model(path).meshes[0].mesh
-
-        if self.geometry is None:
-            print("[Info]", path, "appears to not be a triangle mesh")
-            return
-
-        #preprocessing and setting geometry
-        self.geometry = self._preprocess(self.geometry)
-        self.wire = o3d.geometry.LineSet.create_from_triangle_mesh(self.geometry)
-        self.pc = o3d.geometry.PointCloud(self.geometry.vertices)
-
-        #setting vertex and triangle data for easy access
-        self.vertices = deepcopy(np.asarray(self.geometry.vertices))
-        self.triangles = deepcopy(np.asarray(self.geometry.triangles))
-
-        #initializing kd-tree for quick searches
-        self.tree = o3d.geometry.KDTreeFlann(self.geometry)
+        self.model = Model(path)
 
         self._redraw_scene()
 
         #reconfiguring camera
         bounds = self._scene.scene.bounding_box
         self._scene.setup_camera(60, bounds, bounds.get_center())
-
-        # reset eigenvalues
-        self.eigenvectors = None
-        self.eigenvalues = None
-        self.current_eigenvector = 0
 
     def _on_layout(self, layout_context):
 
@@ -231,35 +164,28 @@ class AppWindow:
                 self._show_eigenvector()
                 self.event_type = "visualize"
 
-        if self.eigenvalues is not None:
-            arrowKeyPressed = True
+        arrowKeyPressed = True
 
-            max_eigenvalue = len(self.eigenvalues)
-            if self.event_type == "simplify":
-                max_eigenvalue //= 2
+        simplify = self.event_type == "simplify"
 
-            match event.key:
-                case 265: #up arrow - next eigenvector
-                    self.current_eigenvector += 1
-                    if self.current_eigenvector >= max_eigenvalue:
-                        self.current_eigenvector = max_eigenvalue-1
-                case 266: #down arrow - previous eigenvector
-                    self.current_eigenvector -= 1
-                    if self.current_eigenvector <= 0:
-                        self.current_eigenvector = 1
-                case 263: #left arrow - go to lowest eigenvector
-                    self.current_eigenvector = 1
-                case 264: #right arrow - go to highest eigenvector
-                    self.current_eigenvector = max_eigenvalue-1
-                case _: # default
-                    arrowKeyPressed = False
+        match event.key:
+            case 265: #up arrow - next eigenvector
+                self.model.inc_eigenvector(simplify)
+            case 266: #down arrow - previous eigenvector
+                self.model.dec_eigenvector(simplify)
+            case 263: #left arrow - go to lowest eigenvector
+                self.model.min_eigenvector(simplify)
+            case 264: #right arrow - go to highest eigenvector
+                self.model.max_eigenvector(simplify)
+            case _: # default
+                arrowKeyPressed = False
 
-            if arrowKeyPressed:
-                match self.event_type:
-                    case "visualize":
-                        self._show_eigenvector()
-                    case "simplify":
-                        self._simplify_mesh(keep_count=self.current_eigenvector)
+        if arrowKeyPressed:
+            match self.event_type:
+                case "visualize":
+                    self._show_eigenvector()
+                case "simplify":
+                    self._simplify_mesh(self.model.current_eigenvector)
 
         return gui.Widget.EventCallbackResult.HANDLED
 
@@ -270,10 +196,8 @@ class AppWindow:
 
     def _reset_geometry(self):
 
-        self.geometry = o3d.geometry.TriangleMesh(
-            o3d.utility.Vector3dVector(self.vertices),
-            o3d.utility.Vector3iVector(self.triangles)
-        )
+        self.model.reset_geometry()
+
         self._redraw_scene()
 
     def _redraw_scene(self):
@@ -281,152 +205,71 @@ class AppWindow:
         #clearing scene
         self._scene.scene.clear_geometry()
 
-        self.geometry.compute_triangle_normals()
-        self.geometry.compute_vertex_normals()
+        self._scene.scene.add_geometry(f"__model__", self.model.geometry, self.matlit)
 
-        self._scene.scene.add_geometry("__model__", self.geometry, self.matlit)
-
-    def _no_geometry(self):
+    def _no_model(self):
         print("There is no mesh in the scene")
-
-    def _calc_eigenvectors(self, count=100):
-        '''
-            Calculate count amount of low valued eigenvectors,
-            count amount of high valued eigenvectors
-            and store them in ascending order
-        '''
-
-        if self.eigenvectors is not None:
-            return
-
-        print("Calculating eigenvectors...")
-
-        L = U.laplacian(self.triangles, type="graph")
-
-        #performing eigendecomposition
-        vals, vecs = eigsh(L, k=count*2, which="BE")
-
-        #sorting according to eigenvalue
-        self.eigenvalues = np.argsort(vals)
-        self.eigenvectors = vecs[:, self.eigenvalues]
-
-        print("done")
-
-    def _get_eigenvectors(self, high=False) -> np.ndarray:
-        '''
-            Return one end of the eigenvectors range.
-            By default return the lowest eigenvectors.
-            If high==True return the highest eigenvectors.
-        '''
-
-        self._calc_eigenvectors()
-
-        start = 0
-        end = self.eigenvectors.shape[1]
-
-        eigs_count = self.eigenvectors.shape[1]//2
-
-        if high:
-            start = eigs_count
-        else:
-            end = eigs_count
-
-        return self.eigenvectors[:, start:end]
 
     def _show_eigenvector(self):
 
-        if self.geometry is None:
-            self._no_geometry()
+        if self.model is None:
+            self._no_model()
             return
 
-        self._calc_eigenvectors()
+        if self.event_type == "simplify":
+            self.model.min_eigenvector()
 
-        print(f"Current eigenvector: {self.eigenvalues[self.current_eigenvector]}")
+        self.model.show_eigenvector()
 
-        scalars = self.eigenvectors[:,self.current_eigenvector]
-        scalars = (scalars - scalars.min()) / (scalars.max() - scalars.min())
-
-        colors = U.sample_colormap(scalars)
-
-        self.geometry.vertex_colors = o3d.utility.Vector3dVector(colors)
         self._redraw_scene()
 
-    def _apply_noise(self, noise_factor=3, perlin=False):
-
-        if self.geometry is None:
-            self._no_geometry()
+    def _apply_noise(self, perlin=False):
+        if self.model is None:
+            self._no_model
             return
 
         print(f"Applying {'perlin' if perlin else 'gaussian'} noise to mesh...")
 
-        new_vecs = np.asarray(self.geometry.vertices)
+        self.model.apply_noise(perlin=perlin)
 
-        # Generate noise
-        if perlin:
-            noise = U.generate_perlin_noise(self.vertices)
-        else:
-            noise = U.generate_gaussian_noise(self.vertices.shape[0])
-
-        # Calculate delta vectors
-        delta = (noise*new_vecs.T).T
-
-        # Calculate new vectors from original and delta vectors
-        new_vecs = new_vecs + (noise_factor/100)*delta
-
-        # Display new vectors
-        self.geometry.vertices = o3d.utility.Vector3dVector(new_vecs)
         self._redraw_scene()
 
         print("done")
 
     def _simplify_mesh(self, keep_count=10):
-
-        if self.geometry is None:
-            self._no_geometry()
+        if self.model is None:
+            self._no_model
             return
 
         print("Simplifying mesh...")
 
-        low_eigenvectors = self._get_eigenvectors()
+        self.model.simplify_mesh(keep_count)
 
-        #forming the eigenvector matrix with only the significant components
-        print(f"Keep {keep_count} eigenvectors")
-
-        transformation_matrix = low_eigenvectors[:, :keep_count]
-        new_vecs = transformation_matrix @ (transformation_matrix.T @ self.vertices)
-
-        #setting the vertices to be the filtered ones
-        self.geometry.vertices = o3d.utility.Vector3dVector(new_vecs)
-
-        #redrawing to see the difference
         self._redraw_scene()
-
-        self.current_eigenvector = keep_count
-
+        
         print("done")
-
 
     def _similar_coatings(self):
 
-        if self.geometry is None:
-            self._no_geometry()
+        if self.model is None:
+            self._no_model()
             return
 
         print("Finding similar coatings...")
 
-        high_eigenvectors = self._get_eigenvectors(high=True)
+        high_eigenvectors = self.model.get_eigenvectors(high=True)
 
         print("done")
 
     def _similar_objects(self):
 
-        if self.geometry is None:
-            self._no_geometry()
+        if self.model is None:
+            self._no_model()
             return
 
         print("Finding similar objects...")
 
-        low_eigenvectors = self._get_eigenvectors()
+        low_eigenvectors = self.model.get_eigenvectors()
 
         print("done")
 
