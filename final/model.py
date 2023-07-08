@@ -38,6 +38,9 @@ class Model:
 
 
     def _preprocess(self, m):
+        print(len(m.triangles))
+
+        m = m.simplify_quadric_decimation(target_number_of_triangles=20000)
 
         vertices, triangles = np.asarray(m.vertices), np.asarray(m.triangles)
 
@@ -85,6 +88,27 @@ class Model:
 
         self.calculate_normals()
 
+    def get_eigenvalues(self, high=False) -> np.ndarray:
+        '''
+            Return one end of the eigenvalue range.
+            By default return the lowest eigenvalues.
+            If high==True return the highest eigenvalues.
+        '''
+
+        self._calc_eigenvectors()
+
+        start = 0
+        end = self.eigenvalues.shape[0]
+
+        eigs_count = end//2
+
+        if high:
+            start = eigs_count
+        else:
+            end = eigs_count
+
+        return self.eigenvalues[start:end]
+    
     def get_eigenvectors(self, high=False) -> np.ndarray:
         '''
             Return one end of the eigenvectors range.
@@ -97,7 +121,7 @@ class Model:
         start = 0
         end = self.eigenvectors.shape[1]
 
-        eigs_count = self.eigenvectors.shape[1]//2
+        eigs_count = end//2
 
         if high:
             start = eigs_count
