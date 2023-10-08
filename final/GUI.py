@@ -151,15 +151,11 @@ class AppWindow:
                 self._reset_geometry()
             case 103: #G - apply gaussian noise to the mesh
                 self._apply_noise()
-            case 112: #N - apply perlin noise to the mesh
+            case 112: #P - apply perlin noise to the mesh
                 self._apply_noise(perlin=True)
             case 115: #S - simplify mesh
                 self._simplify_mesh()
                 self.event_type = "simplify"
-            case 99: #C - find similar coatings
-                self._similar_coatings()
-            case 111: #O - find similar objects
-                self._similar_objects()
             case 118: #V - eigenvector visualization mode
                 self._show_eigenvector()
                 self.event_type = "visualize"
@@ -246,7 +242,7 @@ class AppWindow:
         self.model.simplify_mesh(keep_count)
 
         self._redraw_scene()
-        
+
         print("done")
 
     def _similar_coatings(self):
